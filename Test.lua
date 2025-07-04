@@ -1,27 +1,12 @@
--- Configuration: Change this to your desired weight threshold
-local targetWeightThreshold = 3.5 -- Destroy fruits with weight less than this
-
--- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
--- Get LocalPlayer safely (executor might have different environment)
-local localPlayer = Players.LocalPlayer or Players:GetPlayers()[1]
-if not localPlayer then
-    warn("[FruitRemoval] Could not find LocalPlayer!")
-    return
-end
-
--- Try to get Backpack and Character
-local backpack = localPlayer:FindFirstChild("Backpack")
+local localPlayer = Players.LocalPlayer
+local backpack = localPlayer:WaitForChild("Backpack")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-if not backpack or not character then
-    warn("[FruitRemoval] Could not find Backpack or Character!")
-    return
-end
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- Equip shovel tool if found
+-- Equip shovel
 local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
 if shovelTool and shovelTool.Parent == backpack then
     shovelTool.Parent = character
@@ -30,54 +15,63 @@ end
 local humanoid = character:FindFirstChildOfClass("Humanoid")
 if humanoid and shovelTool then
     humanoid:EquipTool(shovelTool)
-    print("[FruitRemoval] Shovel tool equipped.")
 else
-    warn("[FruitRemoval] Could not equip shovel tool.")
-    -- Not returning here in case you want to proceed anyway
+    warn("Could not equip shovel tool")
+    return
 end
 
--- Get the remote event for removing items
 local Remove_Item = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
 
--- Plants folder and target plant name
-local plantsFolder = Workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
-local plantName = "Purple Dahlia"
+-- Configuration: Change this to your desired weight threshold
+local targetWeightThreshold = 3.5 -- Destroy fruits with weight less than this
 
--- Recursive function to remove fruit parts if weight < threshold
-local function removeFruitsBasedOnWeight(parent)
+-- Helper function to get the weight of a fruit part
+local function getFruitWeight(fruitPart)
+    -- Try to get weight from an attribute first
+    local weight = fruitPart:GetAttribute("Weight")
+    if weight then
+        return weight
+    end
+
+    -- Alternatively, try to find a NumberValue child named "Weight"
+    local weightValue = fruitPart:FindFirstChild("Weight")
+    if weightValue and weightValue:IsA("NumberValue") then
+        return weightValue.Value
+    end
+
+    -- If no weight found, assume infinite weight (do not remove)
+    return math.huge
+end
+
+-- Recursive function to remove all fruit parts with weight less than threshold
+local function removeFruitsRecursively(parent)
     for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("Model") then
-            local weightValue = child:FindFirstChild("Weight")
-            if weightValue and weightValue:IsA("NumberValue") then
-                if weightValue.Value < targetWeightThreshold then
-                    for _, part in ipairs(child:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            print("[FruitRemoval] Removing fruit part:", part:GetFullName(), "Weight:", weightValue.Value)
-                            Remove_Item:FireServer(part)
-                        end
-                    end
-                else
-                    print("[FruitRemoval] Skipping fruit (weight >= threshold):", child.Name, "Weight:", weightValue.Value)
-                end
+        if child:IsA("BasePart") then
+            local fruitWeight = getFruitWeight(child)
+            if fruitWeight < targetWeightThreshold then
+                print("Removing fruit part:", child:GetFullName(), "Weight:", fruitWeight)
+                Remove_Item:FireServer(child)
             else
-                print("[FruitRemoval] Skipping fruit without Weight NumberValue:", child.Name)
+                print("Skipping fruit part (weight too high):", child:GetFullName(), "Weight:", fruitWeight)
             end
-            -- Recurse deeper if necessary
-            removeFruitsBasedOnWeight(child)
+        elseif child:IsA("Model") or child:IsA("Folder") then
+            removeFruitsRecursively(child)
+        else
+            print("Skipping non-part, non-model:", child:GetFullName(), child.ClassName)
         end
     end
 end
 
--- Main execution: iterate plants and remove fruits below threshold
+local plantsFolder = workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
+local plantName = "Purple Dahlia"
+
 for _, plant in ipairs(plantsFolder:GetChildren()) do
     if plant.Name == plantName then
         local fruitsFolder = plant:FindFirstChild("Fruits")
         if fruitsFolder then
-            removeFruitsBasedOnWeight(fruitsFolder)
+            removeFruitsRecursively(fruitsFolder)
         else
-            warn("[FruitRemoval] Fruits folder not found in plant '" .. plant.Name .. "'!")
+            warn("Fruits folder not found in plant '" .. plant.Name .. "'!")
         end
     end
 end
-
-print("[FruitRemoval] Finished processing fruits with weight below " .. targetWeightThreshold)
