@@ -20,7 +20,17 @@ else
     return
 end
 
-local Remove_Item = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
+local GameEvents = ReplicatedStorage:WaitForChild("GameEvents", 5)
+if not GameEvents then
+    warn("GameEvents folder not found in ReplicatedStorage")
+    return
+end
+
+local Remove_Item = GameEvents:WaitForChild("Remove_Item", 5)
+if not Remove_Item then
+    warn("Remove_Item event not found in GameEvents")
+    return
+end
 
 -- Configuration: Change this to your desired weight threshold
 local targetWeightThreshold = 3.5 -- Destroy fruits with weight less than this
