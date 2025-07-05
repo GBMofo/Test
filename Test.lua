@@ -13,12 +13,8 @@ local Farms = workspace:WaitForChild("Farm")
 -- Globals
 local Whitelisted_Plants = {}
 local Whitelisted_Sprinklers = {}
-local AutoHarvest = false
-local AutoSubmit = false
 local AutoShovel = false
 local AutoShovelSprinklers = false
-local HarvestRate = 20  -- Default: 20 plants per second
-local SubmitInterval = 5  -- seconds
 local ShovelWeightThreshold = 200
 local ShovelDelay = 0
 local LastNotificationTime = 0
@@ -92,7 +88,7 @@ local function showNotification(message)
     if os.clock() - LastNotificationTime < 1 then return end
     LastNotificationTime = os.clock()
     
-    local screenGui = LocalPlayer.PlayerGui:FindFirstChild("PunkTeamSummer")
+    local screenGui = LocalPlayer.PlayerGui:FindFirstChild("PunkTeamInfinite")
     if not screenGui then return end
     
     for _, obj in ipairs(screenGui:GetChildren()) do
@@ -109,7 +105,7 @@ local function showNotification(message)
     notification.BackgroundTransparency = 0.3
     notification.BorderSizePixel = 0
     notification.ZIndex = 100
-    notification.Parent = screenGi
+    notification.Parent = screenGui
     
     local corner = Instance.new("UICorner", notification)
     corner.CornerRadius = UDim.new(0, 8)
@@ -169,7 +165,7 @@ end
 
 -- Countdown Notification System
 local function showCountdownNotification(count)
-    local screenGui = LocalPlayer.PlayerGui:FindFirstChild("PunkTeamSummer")
+    local screenGui = LocalPlayer.PlayerGui:FindFirstChild("PunkTeamInfinite")
     if not screenGui then return end
     
     -- Remove any existing countdown notification
@@ -247,111 +243,6 @@ end
 
 local MyFarm = GetFarm(LocalPlayer.Name)
 local PlantsPhysical = MyFarm and MyFarm.Important:FindFirstChild("Plants_Physical")
-
--- Plant Harvesting Functions
-local function CanHarvest(Plant)
-    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
-    if not Prompt then return false end
-    if not Prompt.Enabled then return false end
-    return true
-end
-
--- ULTIMATE HARVEST FIX: Works from any distance
-local function HarvestPlant(Plant)
-    if not Whitelisted_Plants[Plant.Name] then return end
-    
-    local controller = GetProximityPromptController()
-    local disabler = {}  -- Unique disabler object
-    
-    -- Disable proximity prompts globally
-    controller.AddDisabler("AutoHarvest", disabler)
-    
-    -- Harvest the plant
-    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
-    if Prompt then
-        fireproximityprompt(Prompt)
-    end
-    
-    -- Re-enable proximity prompts
-    controller.RemoveDisabler("AutoHarvest", disabler)
-end
-
-local function CollectHarvestable(Parent, Plants)
-    for _, Plant in next, Parent:GetChildren() do
-        if Plant:IsA("Model") then
-            if CanHarvest(Plant) then
-                table.insert(Plants, Plant)
-            end
-            
-            local Fruits = Plant:FindFirstChild("Fruits")
-            if Fruits then
-                CollectHarvestable(Fruits, Plants)
-            end
-        end
-    end
-    return Plants
-end
-
-local function GetHarvestablePlants()
-    local Plants = {}
-    if PlantsPhysical then
-        CollectHarvestable(PlantsPhysical, Plants)
-    end
-    return Plants
-end
-
-local function HarvestPlants()
-    if not PlantsPhysical then return end
-    
-    local Plants = GetHarvestablePlants()
-    if #Plants == 0 then return end
-    
-    for _, Plant in next, Plants do
-        HarvestPlant(Plant)
-        task.wait(1 / HarvestRate)
-    end
-end
-
--- Improved auto systems with dedicated threads
-local HarvestThread
-local SubmitThread
-local ShovelThread
-local ShovelSprinklerThread
-
-local function StartAutoHarvest()
-    if HarvestThread then
-        task.cancel(HarvestThread)
-        HarvestThread = nil
-    end
-    
-    if AutoHarvest then
-        HarvestThread = task.spawn(function()
-            while AutoHarvest do
-                pcall(HarvestPlants)
-                task.wait(0.05)  -- Faster polling for immediate response
-            end
-        end)
-    end
-end
-
--- Auto submit without notification
-local function StartAutoSubmit()
-    if SubmitThread then
-        task.cancel(SubmitThread)
-        SubmitThread = nil
-    end
-    
-    if AutoSubmit then
-        SubmitThread = task.spawn(function()
-            while AutoSubmit do
-                pcall(function()
-                    GameEvents.SummerHarvestRemoteEvent:FireServer("SubmitAllPlants")
-                end)
-                task.wait(SubmitInterval)
-            end
-        end)
-    end
-end
 
 -- SHOVEL PLANTS FUNCTIONALITY
 local function EquipShovel()
@@ -502,18 +393,19 @@ end
 
 -- UI Creation
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "PunkTeamSummer"
+ScreenGui.Name = "PunkTeamInfinite"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Increased height to accommodate the new sections
+-- Smaller UI size as requested
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 340, 0, 310)  -- Increased height
-MainFrame.Position = UDim2.new(0, 10, 0, 60)
+MainFrame.Size = UDim2.new(0, 300, 0, 280)  -- Smaller size
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = false  -- Start hidden
 MainFrame.Parent = ScreenGui
 
 local UICorner = Instance.new("UICorner", MainFrame)
@@ -535,7 +427,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -80, 1, 0)
 Title.Position = UDim2.new(0, 70, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "PUNK TEAM SUMMER EVENT"
+Title.Text = "PUNK TEAM INFINITE"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
@@ -573,7 +465,7 @@ end)
 
 -- Rarity Column
 local RarityFrame = Instance.new("Frame", MainFrame)
-RarityFrame.Size = UDim2.new(0, 65, 0, 260)  -- Increased height
+RarityFrame.Size = UDim2.new(0, 60, 0, 230)  -- Adjusted size
 RarityFrame.Position = UDim2.new(0, 0, 0, 22)
 RarityFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 RarityFrame.BackgroundTransparency = 0.3
@@ -602,10 +494,10 @@ local RarityLayout = Instance.new("UIListLayout", RarityList)
 RarityLayout.Padding = UDim.new(0, 2)
 RarityLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Plants Column - Modified to include both plants list and Shovel Plants
+-- Plants Column
 local PlantsFrame = Instance.new("Frame", MainFrame)
-PlantsFrame.Size = UDim2.new(0, 120, 0, 260)  -- Increased height
-PlantsFrame.Position = UDim2.new(0, 65, 0, 22)
+PlantsFrame.Size = UDim2.new(0, 100, 0, 230)  -- Adjusted size
+PlantsFrame.Position = UDim2.new(0, 60, 0, 22)
 PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 PlantsFrame.BackgroundTransparency = 0.3
 PlantsFrame.BorderSizePixel = 0
@@ -634,7 +526,7 @@ SearchBox.ClearTextOnFocus = false
 
 -- Plants List Container (top half)
 local PlantsListContainer = Instance.new("Frame", PlantsFrame)
-PlantsListContainer.Size = UDim2.new(1, 0, 0.6, -5)  -- 60% of height
+PlantsListContainer.Size = UDim2.new(1, 0, 0.65, -5)  -- Adjusted to prevent overlap
 PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
 PlantsListContainer.BackgroundTransparency = 1
 PlantsListContainer.Name = "PlantsListContainer"
@@ -648,8 +540,8 @@ PlantsList.Parent = PlantsListContainer
 
 -- Shovel Plants Section (bottom half)
 local ShovelPlantsFrame = Instance.new("Frame", PlantsFrame)
-ShovelPlantsFrame.Size = UDim2.new(1, 0, 0.4, -10)  -- 40% of height
-ShovelPlantsFrame.Position = UDim2.new(0, 0, 0.6, 5)
+ShovelPlantsFrame.Size = UDim2.new(1, 0, 0.35, -5)  -- Adjusted to prevent overlap
+ShovelPlantsFrame.Position = UDim2.new(0, 0, 0.65, 5)
 ShovelPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ShovelPlantsFrame.BackgroundTransparency = 0.5
 ShovelPlantsFrame.BorderSizePixel = 0
@@ -668,7 +560,7 @@ ShovelPlantsLabel.Font = Enum.Font.SourceSansBold
 ShovelPlantsLabel.TextSize = 12
 
 local ShovelPlantsToggle = Instance.new("TextButton", ShovelPlantsFrame)
-ShovelPlantsToggle.Size = UDim2.new(0.5, -5, 0.4, -5)
+ShovelPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
 ShovelPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
 ShovelPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
 ShovelPlantsToggle.Text = "OFF"
@@ -677,8 +569,8 @@ ShovelPlantsToggle.Font = Enum.Font.SourceSansBold
 ShovelPlantsToggle.TextSize = 12
 
 local ThresholdLabel = Instance.new("TextLabel", ShovelPlantsFrame)
-ThresholdLabel.Size = UDim2.new(0.5, -5, 0.4, -5)
-ThresholdLabel.Position = UDim2.new(0.5, 5, 0.3, 5)
+ThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+ThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
 ThresholdLabel.BackgroundTransparency = 1
 ThresholdLabel.Text = "Min/kg:"
 ThresholdLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -687,18 +579,18 @@ ThresholdLabel.TextSize = 12
 ThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local ThresholdBox = Instance.new("TextBox", ShovelPlantsFrame)
-ThresholdBox.Size = UDim2.new(0.4, -10, 0.4, -5)
-ThresholdBox.Position = UDim2.new(0.8, 0, 0.3, 5)
+ThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)  -- Smaller size
+ThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
 ThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ThresholdBox.Text = "200"  -- Default threshold
 ThresholdBox.TextColor3 = Color3.new(1, 1, 1)
 ThresholdBox.Font = Enum.Font.SourceSansBold
 ThresholdBox.TextSize = 12
 
--- Settings Column - Converted to Infinite Sprinkler and Shovel Sprinkler
+-- Settings Column
 local SettingsFrame = Instance.new("Frame", MainFrame)
-SettingsFrame.Size = UDim2.new(0, 120, 0, 260)  -- Increased height
-SettingsFrame.Position = UDim2.new(0, 185, 0, 22)
+SettingsFrame.Size = UDim2.new(0, 100, 0, 230)  -- Adjusted size
+SettingsFrame.Position = UDim2.new(0, 160, 0, 22)
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 SettingsFrame.BackgroundTransparency = 0.3
 SettingsFrame.BorderSizePixel = 0
@@ -706,7 +598,6 @@ SettingsFrame.BorderSizePixel = 0
 local SettingsCorner = Instance.new("UICorner", SettingsFrame)
 SettingsCorner.CornerRadius = UDim.new(0, 6)
 
--- Change title to "INFINITE SPRINKLER"
 local SettingsLabel = Instance.new("TextLabel", SettingsFrame)
 SettingsLabel.Size = UDim2.new(1, 0, 0, 16)
 SettingsLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -729,16 +620,16 @@ SprinklerSearchBox.ClearTextOnFocus = false
 
 -- Sprinkler List
 local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
-SprinklerList.Size = UDim2.new(1, 0, 0.6, -5)  -- 60% of height
+SprinklerList.Size = UDim2.new(1, 0, 0.65, -5)  -- Adjusted to prevent overlap
 SprinklerList.Position = UDim2.new(0, 0, 0, 36)
 SprinklerList.BackgroundTransparency = 1
 SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
 SprinklerList.ScrollBarThickness = 4
 
--- Shovel Sprinkler Section (bottom of Settings column)
+-- Shovel Sprinkler Section
 local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
-ShovelSprinklerFrame.Size = UDim2.new(1, -10, 0.4, -5)  -- 40% of height
-ShovelSprinklerFrame.Position = UDim2.new(0, 5, 0.6, 5)
+ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0.35, -5)  -- Adjusted to prevent overlap
+ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0.65, 5)
 ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ShovelSprinklerFrame.BackgroundTransparency = 0.5
 ShovelSprinklerFrame.BorderSizePixel = 0
@@ -757,7 +648,7 @@ ShovelSprinklerLabel.Font = Enum.Font.SourceSansBold
 ShovelSprinklerLabel.TextSize = 12
 
 local ShovelSprinklerToggle = Instance.new("TextButton", ShovelSprinklerFrame)
-ShovelSprinklerToggle.Size = UDim2.new(0.5, -5, 0.4, -5)
+ShovelSprinklerToggle.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
 ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
 ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
 ShovelSprinklerToggle.Text = "OFF"
@@ -766,8 +657,8 @@ ShovelSprinklerToggle.Font = Enum.Font.SourceSansBold
 ShovelSprinklerToggle.TextSize = 12
 
 local DelayLabel = Instance.new("TextLabel", ShovelSprinklerFrame)
-DelayLabel.Size = UDim2.new(0.5, -5, 0.4, -5)
-DelayLabel.Position = UDim2.new(0.5, 5, 0.3, 5)
+DelayLabel.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+DelayLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
 DelayLabel.BackgroundTransparency = 1
 DelayLabel.Text = "Delay/s:"
 DelayLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -776,15 +667,15 @@ DelayLabel.TextSize = 12
 DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local DelayBox = Instance.new("TextBox", ShovelSprinklerFrame)
-DelayBox.Size = UDim2.new(0.4, -10, 0.4, -5)
-DelayBox.Position = UDim2.new(0.8, 0, 0.3, 5)
+DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)  -- Smaller size
+DelayBox.Position = UDim2.new(0.7, 5, 0.3, 5)
 DelayBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 DelayBox.Text = "0"  -- Default delay
 DelayBox.TextColor3 = Color3.new(1, 1, 1)
 DelayBox.Font = Enum.Font.SourceSansBold
 DelayBox.TextSize = 12
 
--- Toggle UI Button (with glow effect)
+-- Toggle UI Button
 local ToggleBtn = Instance.new("ImageButton", ScreenGui)
 ToggleBtn.Name = "ShowHideESPBtn"
 ToggleBtn.Size = UDim2.new(0, 38, 0, 38)
@@ -999,7 +890,7 @@ SprinklerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
     end
     
     SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
-end)
+end
 
 -- Populate Rarity List in fixed order
 for _, rarity in ipairs(RarityOrder) do
@@ -1043,45 +934,6 @@ SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
     SearchPlants(SearchBox.Text)
 end)
 
--- Auto Collect Toggle
-local AutoCollectToggle = Instance.new("TextButton") -- This was missing in the original settings
-AutoCollectToggle.Name = "AutoCollectToggle"
-
-AutoCollectToggle.MouseButton1Click:Connect(function()
-    AutoHarvest = not AutoHarvest
-    
-    if AutoHarvest then
-        AutoCollectToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-        AutoCollectToggle.Text = "ON"
-        showNotification("Auto Harvest: ON")
-        -- Start harvesting immediately
-        task.spawn(function()
-            pcall(HarvestPlants)
-            StartAutoHarvest()
-        end)
-    else
-        AutoCollectToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        AutoCollectToggle.Text = "OFF"
-        showNotification("Auto Harvest: OFF")
-    end
-end)
-
--- Auto Submit Toggle
-AutoSubmitToggle.MouseButton1Click:Connect(function()
-    AutoSubmit = not AutoSubmit
-    
-    if AutoSubmit then
-        AutoSubmitToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-        AutoSubmitToggle.Text = "ON"
-        showNotification("Auto Submit: ON")
-        StartAutoSubmit()
-    else
-        AutoSubmitToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        AutoSubmitToggle.Text = "OFF"
-        showNotification("Auto Submit: OFF")
-    end
-end)
-
 -- Shovel Plants Toggle
 ShovelPlantsToggle.MouseButton1Click:Connect(function()
     AutoShovel = not AutoShovel
@@ -1114,34 +966,6 @@ ShovelSprinklerToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Rate Box Handler
-RateBox.FocusLost:Connect(function()
-    local rate = tonumber(RateBox.Text)
-    if rate and rate > 0 and rate <= 100 then -- Max rate: 100
-        HarvestRate = rate
-        RateBox.Text = tostring(rate)
-        if AutoHarvest then
-            StartAutoHarvest()
-        end
-    else
-        RateBox.Text = tostring(HarvestRate)
-    end
-end)
-
--- Interval Box Handler
-IntervalBox.FocusLost:Connect(function()
-    local interval = tonumber(IntervalBox.Text)
-    if interval and interval >= 1 and interval <= 60 then
-        SubmitInterval = interval
-        IntervalBox.Text = tostring(interval)
-        if AutoSubmit then
-            StartAutoSubmit()
-        end
-    else
-        IntervalBox.Text = tostring(SubmitInterval)
-    end
-end)
-
 -- Threshold box handler
 ThresholdBox.FocusLost:Connect(function()
     local threshold = tonumber(ThresholdBox.Text)
@@ -1170,7 +994,7 @@ DelayBox.FocusLost:Connect(function()
 end)
 
 -- Toggle UI Visibility with animation
-local uiVisible = true
+local uiVisible = false  -- Start with UI hidden
 local firstTimeOpen = true
 
 ToggleBtn.MouseButton1Click:Connect(function()
@@ -1237,4 +1061,4 @@ end)
 -- Initialize
 ShowAllPlants()  -- Show all plants by default in fixed order
 PopulateSprinklerList() -- Populate sprinkler list
-showNotification("Punk Team Summer Script Loaded!")
+showNotification("Punk Team Infinite Sprinkler Loaded!")
