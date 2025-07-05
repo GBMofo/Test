@@ -15,7 +15,7 @@ local Whitelisted_Plants = {}
 local Whitelisted_Sprinklers = {}
 local AutoShovel = false
 local AutoShovelSprinklers = false
-local ShovelWeightThreshold = 200
+local ShovelWeightThreshold = 50
 local ShovelDelay = 0
 local LastNotificationTime = 0
 
