@@ -13,9 +13,13 @@ local Farms = workspace:WaitForChild("Farm")
 -- Globals
 local Whitelisted_Plants = {}
 local Whitelisted_Sprinklers = {}
+local AutoHarvest = false
+local AutoSubmit = false
 local AutoShovel = false
 local AutoShovelSprinklers = false
-local ShovelWeightThreshold = 50
+local HarvestRate = 20  -- Default: 20 plants per second
+local SubmitInterval = 5  -- seconds
+local ShovelWeightThreshold = 200
 local ShovelDelay = 0
 local LastNotificationTime = 0
 
@@ -244,6 +248,111 @@ end
 local MyFarm = GetFarm(LocalPlayer.Name)
 local PlantsPhysical = MyFarm and MyFarm.Important:FindFirstChild("Plants_Physical")
 
+-- Plant Harvesting Functions
+local function CanHarvest(Plant)
+    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
+    if not Prompt then return false end
+    if not Prompt.Enabled then return false end
+    return true
+end
+
+-- ULTIMATE HARVEST FIX: Works from any distance
+local function HarvestPlant(Plant)
+    if not Whitelisted_Plants[Plant.Name] then return end
+    
+    local controller = GetProximityPromptController()
+    local disabler = {}  -- Unique disabler object
+    
+    -- Disable proximity prompts globally
+    controller.AddDisabler("AutoHarvest", disabler)
+    
+    -- Harvest the plant
+    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
+    if Prompt then
+        fireproximityprompt(Prompt)
+    end
+    
+    -- Re-enable proximity prompts
+    controller.RemoveDisabler("AutoHarvest", disabler)
+end
+
+local function CollectHarvestable(Parent, Plants)
+    for _, Plant in next, Parent:GetChildren() do
+        if Plant:IsA("Model") then
+            if CanHarvest(Plant) then
+                table.insert(Plants, Plant)
+            end
+            
+            local Fruits = Plant:FindFirstChild("Fruits")
+            if Fruits then
+                CollectHarvestable(Fruits, Plants)
+            end
+        end
+    end
+    return Plants
+end
+
+local function GetHarvestablePlants()
+    local Plants = {}
+    if PlantsPhysical then
+        CollectHarvestable(PlantsPhysical, Plants)
+    end
+    return Plants
+end
+
+local function HarvestPlants()
+    if not PlantsPhysical then return end
+    
+    local Plants = GetHarvestablePlants()
+    if #Plants == 0 then return end
+    
+    for _, Plant in next, Plants do
+        HarvestPlant(Plant)
+        task.wait(1 / HarvestRate)
+    end
+end
+
+-- Improved auto systems with dedicated threads
+local HarvestThread
+local SubmitThread
+local ShovelThread
+local ShovelSprinklerThread
+
+local function StartAutoHarvest()
+    if HarvestThread then
+        task.cancel(HarvestThread)
+        HarvestThread = nil
+    end
+    
+    if AutoHarvest then
+        HarvestThread = task.spawn(function()
+            while AutoHarvest do
+                pcall(HarvestPlants)
+                task.wait(0.05)  -- Faster polling for immediate response
+            end
+        end)
+    end
+end
+
+-- Auto submit without notification
+local function StartAutoSubmit()
+    if SubmitThread then
+        task.cancel(SubmitThread)
+        SubmitThread = nil
+    end
+    
+    if AutoSubmit then
+        SubmitThread = task.spawn(function()
+            while AutoSubmit do
+                pcall(function()
+                    GameEvents.SummerHarvestRemoteEvent:FireServer("SubmitAllPlants")
+                end)
+                task.wait(SubmitInterval)
+            end
+        end)
+    end
+end
+
 -- SHOVEL PLANTS FUNCTIONALITY
 local function EquipShovel()
     local character = LocalPlayer.Character
@@ -427,7 +536,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -80, 1, 0)
 Title.Position = UDim2.new(0, 70, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "PUNK TEAM INFINITE"
+Title.Text = "PUNK TEAM INFINITE SPRINKLER"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
@@ -934,6 +1043,45 @@ SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
     SearchPlants(SearchBox.Text)
 end)
 
+-- Auto Collect Toggle
+local AutoCollectToggle = Instance.new("TextButton") -- This was missing in the original settings
+AutoCollectToggle.Name = "AutoCollectToggle"
+
+AutoCollectToggle.MouseButton1Click:Connect(function()
+    AutoHarvest = not AutoHarvest
+    
+    if AutoHarvest then
+        AutoCollectToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+        AutoCollectToggle.Text = "ON"
+        showNotification("Auto Harvest: ON")
+        -- Start harvesting immediately
+        task.spawn(function()
+            pcall(HarvestPlants)
+            StartAutoHarvest()
+        end)
+    else
+        AutoCollectToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        AutoCollectToggle.Text = "OFF"
+        showNotification("Auto Harvest: OFF")
+    end
+end)
+
+-- Auto Submit Toggle
+AutoSubmitToggle.MouseButton1Click:Connect(function()
+    AutoSubmit = not AutoSubmit
+    
+    if AutoSubmit then
+        AutoSubmitToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+        AutoSubmitToggle.Text = "ON"
+        showNotification("Auto Submit: ON")
+        StartAutoSubmit()
+    else
+        AutoSubmitToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        AutoSubmitToggle.Text = "OFF"
+        showNotification("Auto Submit: OFF")
+    end
+end)
+
 -- Shovel Plants Toggle
 ShovelPlantsToggle.MouseButton1Click:Connect(function()
     AutoShovel = not AutoShovel
@@ -963,6 +1111,34 @@ ShovelSprinklerToggle.MouseButton1Click:Connect(function()
         ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
         ShovelSprinklerToggle.Text = "OFF"
         showNotification("Auto Shovel Sprinklers: OFF")
+    end
+end)
+
+-- Rate Box Handler
+RateBox.FocusLost:Connect(function()
+    local rate = tonumber(RateBox.Text)
+    if rate and rate > 0 and rate <= 100 then -- Max rate: 100
+        HarvestRate = rate
+        RateBox.Text = tostring(rate)
+        if AutoHarvest then
+            StartAutoHarvest()
+        end
+    else
+        RateBox.Text = tostring(HarvestRate)
+    end
+end)
+
+-- Interval Box Handler
+IntervalBox.FocusLost:Connect(function()
+    local interval = tonumber(IntervalBox.Text)
+    if interval and interval >= 1 and interval <= 60 then
+        SubmitInterval = interval
+        IntervalBox.Text = tostring(interval)
+        if AutoSubmit then
+            StartAutoSubmit()
+        end
+    else
+        IntervalBox.Text = tostring(SubmitInterval)
     end
 end)
 
