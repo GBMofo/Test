@@ -68,21 +68,21 @@ local function hasFruitBelowThreshold(parent, threshold)
     return false
 end
 
-local function ClickPlant(plantCFrame)
+local function ClickPart(partCFrame)
     local player = Players.LocalPlayer
     local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
     local inputGateway2 = player.Character and player.Character:FindFirstChild("InputGateway") and player.Character.InputGateway:FindFirstChild("Activation")
 
-    print("Clicking plant at CFrame:", plantCFrame)
+    print("Clicking part at CFrame:", partCFrame)
 
     -- Mouse button down (click start)
-    inputGateway1:FireServer(true, plantCFrame)
-    if inputGateway2 then inputGateway2:FireServer(true, plantCFrame) end
+    inputGateway1:FireServer(true, partCFrame)
+    if inputGateway2 then inputGateway2:FireServer(true, partCFrame) end
     task.wait(0.1)
 
     -- Mouse button up (click end)
-    inputGateway1:FireServer(false, plantCFrame)
-    if inputGateway2 then inputGateway2:FireServer(false, plantCFrame) end
+    inputGateway1:FireServer(false, partCFrame)
+    if inputGateway2 then inputGateway2:FireServer(false, partCFrame) end
     task.wait(0.2)
 end
 
@@ -129,19 +129,42 @@ local function DestroyPlants()
                 print("Destroying plant:", plant.Name)
 
                 if hrp then
-                    -- Teleport very close to the plant to simulate clicking
                     hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 0.5)
                     task.wait(0.3)
                     print("Teleported near plant:", plant.Name)
                 end
 
-                -- Simulate clicking on the plant part
-                ClickPlant(plant.PrimaryPart.CFrame)
-                task.wait(0.3)
+                -- Click the plant part
+                ClickPart(plant.PrimaryPart.CFrame)
 
-                -- Fire deletion/removal events after clicking
+                -- Also click each fruit part to ensure destruction triggers
+                if fruitsFolder then
+                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                        if fruit.PrimaryPart then
+                            print("Clicking fruit:", fruit.Name)
+                            ClickPart(fruit.PrimaryPart.CFrame)
+                            task.wait(0.2)
+                        elseif fruit:IsA("BasePart") then
+                            print("Clicking fruit part:", fruit.Name)
+                            ClickPart(fruit.CFrame)
+                            task.wait(0.2)
+                        end
+                    end
+                end
+
+                -- Fire deletion/removal events for plant and fruits
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
+                print("Fired DeleteObject and RemoveItem for plant:", plant.Name)
+
+                if fruitsFolder then
+                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                        DeleteObject:FireServer(fruit)
+                        RemoveItem:FireServer(fruit.Name)
+                        print("Fired DeleteObject and RemoveItem for fruit:", fruit.Name)
+                        task.wait(0.1)
+                    end
+                end
 
                 destroyedCount = destroyedCount + 1
                 task.wait(0.5)
