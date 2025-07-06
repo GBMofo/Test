@@ -15,7 +15,6 @@ local Whitelisted_PlantsForDestruction = {
     ["Carrot"] = true,
 }
 
--- Equip shovel tool function
 local function EquipShovel()
     local character = localPlayer.Character
     if not character then return false end
@@ -34,7 +33,6 @@ local function EquipShovel()
     return false
 end
 
--- Recursive function to check if any fruit part/model under 'parent' has weight below threshold
 local function hasFruitBelowThreshold(parent, threshold)
     for _, child in ipairs(parent:GetChildren()) do
         if child:IsA("BasePart") then
@@ -42,12 +40,9 @@ local function hasFruitBelowThreshold(parent, threshold)
             if fruitModel and fruitModel:IsA("Model") then
                 local weightValue = fruitModel:FindFirstChild("Weight")
                 if weightValue and weightValue:IsA("NumberValue") then
-                    print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
                     if weightValue.Value < threshold then
                         return true
                     end
-                else
-                    print("Weight value missing or invalid for fruit:", fruitModel.Name)
                 end
             end
         elseif child:IsA("Model") or child:IsA("Folder") then
@@ -91,15 +86,13 @@ local function DestroyPlants()
             local shouldDestroy = false
             if fruitsFolder then
                 shouldDestroy = hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
-            else
-                print("No fruits folder found in plant:", plant.Name)
             end
 
             if shouldDestroy then
                 print("Destroying plant:", plant.Name)
                 DeleteObject:FireServer(plant)
                 destroyedCount = destroyedCount + 1
-                task.wait(0.1) -- small delay to avoid spamming
+                task.wait(0.1)
             end
         end
     end
