@@ -1,135 +1,147 @@
+-- SERVICES
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
-local localPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+-- REMOTES
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
-local DeleteObject = GameEvents:WaitForChild("DeleteObject")
-local RemoveItem = GameEvents:WaitForChild("Remove_Item")
-local ShovelPrompt = localPlayer.PlayerGui:WaitForChild("ShovelPrompt")
-local ConfirmFrame = ShovelPrompt:WaitForChild("ConfirmFrame")
 
-local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
+-- NOTIFICATION FUNCTION
+local function showNotification(message)
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+    local screenGui = playerGui:FindFirstChild("PunkTeamInfinite") or Instance.new("ScreenGui")
+    screenGui.Name = "PunkTeamInfinite"
+    screenGui.Parent = playerGui
+    for _, obj in ipairs(screenGui:GetChildren()) do
+        if obj.Name == "Notification" then obj:Destroy() end
+    end
+    local notification = Instance.new("Frame")
+    notification.Name = "Notification"
+    notification.Size = UDim2.new(0, 300, 0, 50)
+    notification.Position = UDim2.new(0.5, -150, 0.3, 0)
+    notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    notification.BackgroundTransparency = 0.3
+    notification.BorderSizePixel = 0
+    notification.ZIndex = 100
+    notification.Parent = screenGui
+    local corner = Instance.new("UICorner", notification)
+    corner.CornerRadius = UDim.new(0, 8)
+    local stroke = Instance.new("UIStroke", notification)
+    stroke.Color = Color3.fromRGB(255, 50, 50)
+    stroke.Thickness = 2
+    local label = Instance.new("TextLabel", notification)
+    label.Size = UDim2.new(1, -10, 1, -10)
+    label.Position = UDim2.new(0, 5, 0, 5)
+    label.BackgroundTransparency = 1
+    label.Text = message
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 18
+    label.TextWrapped = true
+    notification.BackgroundTransparency = 1
+    label.TextTransparency = 1
+    local fadeIn = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 0.3})
+    local textFadeIn = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 0})
+    fadeIn:Play()
+    textFadeIn:Play()
+    task.delay(3, function()
+        local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+        local textFadeOut = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 1})
+        fadeOut:Play()
+        textFadeOut:Play()
+        fadeOut.Completed:Wait()
+        notification:Destroy()
+    end)
+end
 
+-- WHITELIST: Add plant names you want to destroy here
+local Whitelisted_PlantsForDestruction = {
+    ["Tomato"] = true,
+    ["Strawberry"] = true,
+    -- Add more plant names as needed
+}
+
+-- EQUIP SHOVEL FUNCTION
 local function EquipShovel()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if not character then return false end
-    local tool = character:FindFirstChild("Shovel [Destroy Plants]") or localPlayer.Backpack:FindFirstChild("Shovel [Destroy Plants]")
-    if not tool then
-        warn("Shovel tool not found")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return false end
+    local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
+    if not shovelTool then
+        showNotification("Shovel not found in inventory!")
         return false
     end
-    tool.Parent = character
+    if shovelTool.Parent == backpack then
+        shovelTool.Parent = character
+    end
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if humanoid then
-        humanoid:EquipTool(tool)
-        task.wait(0.1)
-        tool:Activate()
+        humanoid:EquipTool(shovelTool)
         return true
     end
     return false
 end
 
-local function GetTargetPart(model)
-    if model.PrimaryPart then return model.PrimaryPart end
-    for _, child in ipairs(model:GetChildren()) do
-        if child:IsA("BasePart") then return child end
+-- MAIN DESTROY FUNCTION
+local function DestroyPlants()
+    local Farms = workspace:FindFirstChild("Farm")
+    if not Farms then showNotification("Farms folder not found!") return false end
+
+    -- Find your own farm
+    local function GetFarmOwner(Farm)
+        return Farm and Farm:FindFirstChild("Important") and Farm.Important:FindFirstChild("Data") and Farm.Important.Data:FindFirstChild("Owner") and Farm.Important.Data.Owner.Value
     end
-    return nil
-end
-
-local function SimulateShovelTargeting(plantPart)
-    local screenPos, onScreen = camera:WorldToViewportPoint(plantPart.Position)
-    if not onScreen then
-        warn("Plant not on screen")
-        return false
-    end
-
-    -- Simulate the shovel's input handler by firing the mouse click at the screen position
-    -- The shovel listens to mouse clicks and calls handleShovelInput_upvr with mouse location
-    -- We simulate this by invoking the mouse click event manually
-
-    -- Move mouse cursor (if possible)
-    UserInputService:SetMouseLocation(screenPos.X, screenPos.Y)
-    -- Fire mouse button down event
-    local mouse = localPlayer:GetMouse()
-    mouse.Button1Down:Wait() -- wait for actual click or simulate if possible
-
-    -- Alternatively, if you can access the shovel's input function, call it directly with screenPos
-
-    -- Wait for the prompt to appear
-    local timeout = 5
-    while not ShovelPrompt.Enabled and timeout > 0 do
-        task.wait(0.1)
-        timeout -= 0.1
-    end
-
-    return ShovelPrompt.Enabled
-end
-
-local function ConfirmDestruction()
-    if not ShovelPrompt.Enabled then
-        warn("Shovel prompt not enabled")
-        return false
-    end
-
-    -- Fire the confirm button click event programmatically
-    ConfirmFrame.Confirm:CaptureFocus()
-    ConfirmFrame.Confirm.MouseButton1Click:Fire()
-
-    -- Wait for prompt to close
-    local timeout = 5
-    while ShovelPrompt.Enabled and timeout > 0 do
-        task.wait(0.1)
-        timeout -= 0.1
-    end
-
-    return not ShovelPrompt.Enabled
-end
-
-local function DestroyPlant(plant)
-    local plantPart = GetTargetPart(plant)
-    if not plantPart then
-        warn("No valid part found for plant:", plant.Name)
-        return false
-    end
-
-    -- Teleport near plant
-    local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = plantPart.CFrame * CFrame.new(0, 0, 2)
-        task.wait(0.3)
-    end
-
-    if not SimulateShovelTargeting(plantPart) then
-        warn("Failed to target plant:", plant.Name)
-        return false
-    end
-
-    if not ConfirmDestruction() then
-        warn("Failed to confirm destruction for plant:", plant.Name)
-        return false
-    end
-
-    print("Destroyed plant:", plant.Name)
-    return true
-end
-
-if EquipShovel() then
-    local farm = GetFarm(localPlayer)
-    local important = farm and farm:FindFirstChild("Important")
-    local plantsPhysical = important and important:FindFirstChild("Plants_Physical")
-    if plantsPhysical then
-        for _, plant in ipairs(plantsPhysical:GetChildren()) do
-            -- Add your plant filtering logic here if needed
-            DestroyPlant(plant)
-            task.wait(0.5)
+    local function GetFarm(PlayerName)
+        for _, Farm in next, Farms:GetChildren() do
+            if GetFarmOwner(Farm) == PlayerName then
+                return Farm
+            end
         end
-    else
-        warn("Plants_Physical folder not found")
+        return nil
     end
-else
-    warn("Failed to equip shovel")
+
+    local farm = GetFarm(LocalPlayer.Name)
+    if not farm then showNotification("Farm not found!") return false end
+    local important = farm:FindFirstChild("Important")
+    if not important then showNotification("Important folder not found!") return false end
+    local plantsPhysical = important:FindFirstChild("Plants_Physical")
+    if not plantsPhysical then showNotification("Plants_Physical not found!") return false end
+
+    -- Equip shovel with retry logic
+    local equipped = false
+    for i = 1, 3 do
+        if pcall(EquipShovel) then
+            equipped = true
+            break
+        end
+        task.wait(0.5)
+    end
+    if not equipped then showNotification("Failed to equip shovel!") return false end
+
+    local destroyedCount = 0
+    for _, plant in ipairs(plantsPhysical:GetChildren()) do
+        if Whitelisted_PlantsForDestruction[plant.Name] then
+            pcall(function()
+                if GameEvents:FindFirstChild("DeleteObject") then
+                    GameEvents.DeleteObject:FireServer(plant)
+                    destroyedCount = destroyedCount + 1
+                end
+            end)
+            task.wait(0.1)
+        end
+    end
+
+    if destroyedCount > 0 then
+        showNotification("Destroyed " .. destroyedCount .. " plants")
+        return true
+    else
+        showNotification("No whitelisted plants found to destroy.")
+    end
+    return false
 end
+
+-- RUN IT ONCE
+DestroyPlants()
