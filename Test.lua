@@ -325,7 +325,7 @@ local success, errorMsg = xpcall(function()
         return shoveledSomething
     end
 
-    -- Improved Auto-Shovel Loop
+    -- Improved Auto-Shovel Loop with immediate stop
     local ShovelThread
     local function StartAutoShovel()
         if ShovelThread then
@@ -403,8 +403,8 @@ local success, errorMsg = xpcall(function()
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 300, 0, 280)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
+    MainFrame.Size = UDim2.new(0, 280, 0, 280)  -- Reduced width from 300 to 280
+    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)  -- Centered position adjusted
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 0
@@ -501,81 +501,81 @@ local success, errorMsg = xpcall(function()
     RarityLayout.Padding = UDim.new(0, 2)
     RarityLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    -- Plants Column
-    local PlantsFrame = Instance.new("Frame", MainFrame)
-    PlantsFrame.Size = UDim2.new(0, 100, 0, 230)
-    PlantsFrame.Position = UDim2.new(0, 60, 0, 22)
-    PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    PlantsFrame.BackgroundTransparency = 0.3
-    PlantsFrame.BorderSizePixel = 0
+    -- Fruits Column (previously Plants)
+    local FruitsFrame = Instance.new("Frame", MainFrame)
+    FruitsFrame.Size = UDim2.new(0, 110, 0, 230)  -- Increased width from 100 to 110
+    FruitsFrame.Position = UDim2.new(0, 60, 0, 22)  -- Position adjusted
+    FruitsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    FruitsFrame.BackgroundTransparency = 0.3
+    FruitsFrame.BorderSizePixel = 0
 
-    local PlantsCorner = Instance.new("UICorner", PlantsFrame)
-    PlantsCorner.CornerRadius = UDim.new(0, 6)
+    local FruitsCorner = Instance.new("UICorner", FruitsFrame)
+    FruitsCorner.CornerRadius = UDim.new(0, 6)
 
-    local PlantsLabel = Instance.new("TextLabel", PlantsFrame)
-    PlantsLabel.Size = UDim2.new(1, 0, 0, 16)
-    PlantsLabel.Position = UDim2.new(0, 0, 0, 0)
-    PlantsLabel.BackgroundTransparency = 1
-    PlantsLabel.Text = "PLANTS"
-    PlantsLabel.TextColor3 = Color3.new(1, 1, 1)
-    PlantsLabel.Font = Enum.Font.SourceSansBold
-    PlantsLabel.TextSize = 12
+    local FruitsLabel = Instance.new("TextLabel", FruitsFrame)
+    FruitsLabel.Size = UDim2.new(1, 0, 0, 16)
+    FruitsLabel.Position = UDim2.new(0, 0, 0, 0)
+    FruitsLabel.BackgroundTransparency = 1
+    FruitsLabel.Text = "FRUITS"  -- Changed from PLANTS
+    FruitsLabel.TextColor3 = Color3.new(1, 1, 1)
+    FruitsLabel.Font = Enum.Font.SourceSansBold
+    FruitsLabel.TextSize = 12
 
-    local SearchBox = Instance.new("TextBox", PlantsFrame)
+    local SearchBox = Instance.new("TextBox", FruitsFrame)
     SearchBox.Size = UDim2.new(1, -10, 0, 20)
     SearchBox.Position = UDim2.new(0, 5, 0, 16)
     SearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     SearchBox.TextColor3 = Color3.new(1, 1, 1)
-    SearchBox.PlaceholderText = "Search plants..."
+    SearchBox.PlaceholderText = "Search fruits..."  -- Changed from plants
     SearchBox.Font = Enum.Font.SourceSans
     SearchBox.TextSize = 14
     SearchBox.ClearTextOnFocus = false
 
-    -- Plants List Container
-    local PlantsListContainer = Instance.new("Frame", PlantsFrame)
-    PlantsListContainer.Size = UDim2.new(1, 0, 0, 126)
-    PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
-    PlantsListContainer.BackgroundTransparency = 1
-    PlantsListContainer.Name = "PlantsListContainer"
+    -- Fruits List Container
+    local FruitsListContainer = Instance.new("Frame", FruitsFrame)
+    FruitsListContainer.Size = UDim2.new(1, 0, 0, 126)
+    FruitsListContainer.Position = UDim2.new(0, 0, 0, 36)
+    FruitsListContainer.BackgroundTransparency = 1
+    FruitsListContainer.Name = "FruitsListContainer"
 
-    local PlantsList = Instance.new("ScrollingFrame", PlantsListContainer)
-    PlantsList.Size = UDim2.new(1, 0, 1, 0)
-    PlantsList.BackgroundTransparency = 1
-    PlantsList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    PlantsList.ScrollBarThickness = 4
-    PlantsList.Parent = PlantsListContainer
+    local FruitsList = Instance.new("ScrollingFrame", FruitsListContainer)
+    FruitsList.Size = UDim2.new(1, 0, 1, 0)
+    FruitsList.BackgroundTransparency = 1
+    FruitsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    FruitsList.ScrollBarThickness = 4
+    FruitsList.Parent = FruitsListContainer
 
-    -- Shovel Plants Section
-    local ShovelPlantsFrame = Instance.new("Frame", PlantsFrame)
-    ShovelPlantsFrame.Size = UDim2.new(1, 0, 0, 63)
-    ShovelPlantsFrame.Position = UDim2.new(0, 0, 0, 167)
-    ShovelPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    ShovelPlantsFrame.BackgroundTransparency = 0.5
-    ShovelPlantsFrame.BorderSizePixel = 0
-    ShovelPlantsFrame.Name = "ShovelPlants"
+    -- Shovel Fruits Section (previously Shovel Plants)
+    local ShovelFruitsFrame = Instance.new("Frame", FruitsFrame)
+    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 63)
+    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 167)
+    ShovelFruitsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    ShovelFruitsFrame.BackgroundTransparency = 0.5
+    ShovelFruitsFrame.BorderSizePixel = 0
+    ShovelFruitsFrame.Name = "ShovelFruits"
 
-    local ShovelPlantsCorner = Instance.new("UICorner", ShovelPlantsFrame)
-    ShovelPlantsCorner.CornerRadius = UDim.new(0, 6)
+    local ShovelFruitsCorner = Instance.new("UICorner", ShovelFruitsFrame)
+    ShovelFruitsCorner.CornerRadius = UDim.new(0, 6)
 
-    local ShovelPlantsLabel = Instance.new("TextLabel", ShovelPlantsFrame)
-    ShovelPlantsLabel.Size = UDim2.new(1, 0, 0.3, 0)
-    ShovelPlantsLabel.Position = UDim2.new(0, 0, 0, 0)
-    ShovelPlantsLabel.BackgroundTransparency = 1
-    ShovelPlantsLabel.Text = "SHOVEL PLANTS"
-    ShovelPlantsLabel.TextColor3 = Color3.new(1, 1, 1)
-    ShovelPlantsLabel.Font = Enum.Font.SourceSansBold
-    ShovelPlantsLabel.TextSize = 12
+    local ShovelFruitsLabel = Instance.new("TextLabel", ShovelFruitsFrame)
+    ShovelFruitsLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    ShovelFruitsLabel.Position = UDim2.new(0, 0, 0, 0)
+    ShovelFruitsLabel.BackgroundTransparency = 1
+    ShovelFruitsLabel.Text = "SHOVEL FRUITS"  -- Changed from SHOVEL PLANTS
+    ShovelFruitsLabel.TextColor3 = Color3.new(1, 1, 1)
+    ShovelFruitsLabel.Font = Enum.Font.SourceSansBold
+    ShovelFruitsLabel.TextSize = 12
 
-    local ShovelPlantsToggle = Instance.new("TextButton", ShovelPlantsFrame)
-    ShovelPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
-    ShovelPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
-    ShovelPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-    ShovelPlantsToggle.Text = "OFF"
-    ShovelPlantsToggle.TextColor3 = Color3.new(1, 1, 1)
-    ShovelPlantsToggle.Font = Enum.Font.SourceSansBold
-    ShovelPlantsToggle.TextSize = 12
+    local ShovelFruitsToggle = Instance.new("TextButton", ShovelFruitsFrame)
+    ShovelFruitsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
+    ShovelFruitsToggle.Position = UDim2.new(0, 5, 0.3, 5)
+    ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    ShovelFruitsToggle.Text = "OFF"
+    ShovelFruitsToggle.TextColor3 = Color3.new(1, 1, 1)
+    ShovelFruitsToggle.Font = Enum.Font.SourceSansBold
+    ShovelFruitsToggle.TextSize = 12
 
-    local ThresholdLabel = Instance.new("TextLabel", ShovelPlantsFrame)
+    local ThresholdLabel = Instance.new("TextLabel", ShovelFruitsFrame)
     ThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
     ThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
     ThresholdLabel.BackgroundTransparency = 1
@@ -585,7 +585,7 @@ local success, errorMsg = xpcall(function()
     ThresholdLabel.TextSize = 12
     ThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    local ThresholdBox = Instance.new("TextBox", ShovelPlantsFrame)
+    local ThresholdBox = Instance.new("TextBox", ShovelFruitsFrame)
     ThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)
     ThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
     ThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -596,8 +596,8 @@ local success, errorMsg = xpcall(function()
 
     -- SPRINKLER Column
     local SettingsFrame = Instance.new("Frame", MainFrame)
-    SettingsFrame.Size = UDim2.new(0, 100, 0, 230)
-    SettingsFrame.Position = UDim2.new(0, 160, 0, 22)
+    SettingsFrame.Size = UDim2.new(0, 110, 0, 230)  -- Increased width from 100 to 110
+    SettingsFrame.Position = UDim2.new(0, 170, 0, 22)  -- Position adjusted (60 + 110 = 170)
     SettingsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     SettingsFrame.BackgroundTransparency = 0.3
     SettingsFrame.BorderSizePixel = 0
@@ -794,7 +794,7 @@ local success, errorMsg = xpcall(function()
 
     -- Plant Display Functions
     local function ShowAllPlants()
-        PlantsList:ClearAllChildren()
+        FruitsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
         
@@ -802,31 +802,31 @@ local success, errorMsg = xpcall(function()
             local plants = PlantData[rarity]
             for _, plant in ipairs(plants) do
                 local btn = CreatePlantButton(plant, rarity, yPosition)
-                btn.Parent = PlantsList
+                btn.Parent = FruitsList
                 yPosition = yPosition + rowHeight
             end
         end
         
-        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     local function ShowPlantsByRarity(rarity)
-        PlantsList:ClearAllChildren()
+        FruitsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
         
         local plants = PlantData[rarity] or {}
         for _, plant in ipairs(plants) do
             local btn = CreatePlantButton(plant, rarity, yPosition)
-            btn.Parent = PlantsList
+            btn.Parent = FruitsList
             yPosition = yPosition + rowHeight
         end
         
-        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     local function SearchPlants(searchTerm)
-        PlantsList:ClearAllChildren()
+        FruitsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
         
@@ -846,13 +846,13 @@ local success, errorMsg = xpcall(function()
             for _, plant in ipairs(plants) do
                 if string.find(string.lower(plant), string.lower(searchTerm)) then
                     local btn = CreatePlantButton(plant, rarity, yPosition)
-                    btn.Parent = PlantsList
+                    btn.Parent = FruitsList
                     yPosition = yPosition + rowHeight
                 end
             end
         end
         
-        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     -- Populate sprinkler list
@@ -925,19 +925,24 @@ local success, errorMsg = xpcall(function()
         SearchPlants(SearchBox.Text)
     end)
 
-    -- Shovel Plants Toggle
-    ShovelPlantsToggle.MouseButton1Click:Connect(function()
+    -- Shovel Fruits Toggle
+    ShovelFruitsToggle.MouseButton1Click:Connect(function()
         AutoShovel = not AutoShovel
         
         if AutoShovel then
-            ShovelPlantsToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-            ShovelPlantsToggle.Text = "ON"
+            ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+            ShovelFruitsToggle.Text = "ON"
             showNotification("Auto Shovel: ON")
             StartAutoShovel()
         else
-            ShovelPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-            ShovelPlantsToggle.Text = "OFF"
+            ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+            ShovelFruitsToggle.Text = "OFF"
             showNotification("Auto Shovel: OFF")
+            -- Immediately stop shovel thread
+            if ShovelThread then
+                task.cancel(ShovelThread)
+                ShovelThread = nil
+            end
         end
     end)
 
@@ -954,6 +959,11 @@ local success, errorMsg = xpcall(function()
             ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
             ShovelSprinklerToggle.Text = "OFF"
             showNotification("Auto Shovel Sprinklers: OFF")
+            -- Immediately stop shovel sprinkler thread
+            if ShovelSprinklerThread then
+                task.cancel(ShovelSprinklerThread)
+                ShovelSprinklerThread = nil
+            end
         end
     end)
 
