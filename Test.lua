@@ -20,8 +20,10 @@ local success, errorMsg = xpcall(function()
     -- Globals
     local Whitelisted_Plants = {}
     local Whitelisted_Sprinklers = {}
+    local Whitelisted_PlantsForDestruction = {}
     local AutoShovel = false
     local AutoShovelSprinklers = false
+    local AutoDestroyPlants = false
     local ShovelWeightThreshold = 200
     local ShovelDelay = 0
     local LastNotificationTime = 0
@@ -397,14 +399,93 @@ local success, errorMsg = xpcall(function()
         end
     end
 
+    -- DESTROY PLANTS FUNCTIONALITY
+    local function DestroyPlants()
+        local farm = GetFarm(LocalPlayer.Name)
+        if not farm then
+            showNotification("Farm not found!")
+            return false
+        end
+        
+        local important = farm:FindFirstChild("Important")
+        if not important then
+            showNotification("Important folder not found!")
+            return false
+        end
+        
+        local plantsPhysical = important:FindFirstChild("Plants_Physical")
+        if not plantsPhysical then
+            showNotification("Plants_Physical not found!")
+            return false
+        end
+        
+        -- Equip shovel with retry logic
+        local equipped = false
+        for i = 1, 3 do
+            if pcall(EquipShovel) then
+                equipped = true
+                break
+            end
+            task.wait(0.5)
+        end
+        
+        if not equipped then
+            showNotification("Failed to equip shovel!")
+            return false
+        end
+        
+        local destroyedCount = 0
+        
+        for _, plant in ipairs(plantsPhysical:GetChildren()) do
+            if Whitelisted_PlantsForDestruction[plant.Name] then
+                pcall(function()
+                    if GameEvents:FindFirstChild("DeleteObject") then
+                        GameEvents.DeleteObject:FireServer(plant)
+                        destroyedCount = destroyedCount + 1
+                    end
+                end)
+                task.wait(0.1)
+            end
+        end
+        
+        if destroyedCount > 0 then
+            showNotification("Destroyed " .. destroyedCount .. " plants")
+            return true
+        end
+        
+        return false
+    end
+
+    local DestroyPlantsThread
+    local function StartAutoDestroyPlants()
+        if DestroyPlantsThread then
+            task.cancel(DestroyPlantsThread)
+            DestroyPlantsThread = nil
+        end
+        
+        if AutoDestroyPlants then
+            DestroyPlantsThread = task.spawn(function()
+                while AutoDestroyPlants do
+                    local success, destroyed = pcall(DestroyPlants)
+                    
+                    if not success or not destroyed then
+                        task.wait(1)
+                    else
+                        task.wait(0.1)
+                    end
+                end
+            end)
+        end
+    end
+
     -- UI Creation
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "PunkTeamInfinite"
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 280, 0, 280)
-    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)
+    MainFrame.Size = UDim2.new(0, 390, 0, 280)  -- Increased width for new column
+    MainFrame.Position = UDim2.new(0.5, -195, 0.5, -140)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 0
@@ -533,7 +614,7 @@ local success, errorMsg = xpcall(function()
 
     -- Fruits List Container
     local FruitsListContainer = Instance.new("Frame", FruitsFrame)
-    FruitsListContainer.Size = UDim2.new(1, 0, 0, 130)  -- Increased height
+    FruitsListContainer.Size = UDim2.new(1, 0, 0, 130)
     FruitsListContainer.Position = UDim2.new(0, 0, 0, 36)
     FruitsListContainer.BackgroundTransparency = 1
     FruitsListContainer.Name = "FruitsListContainer"
@@ -547,8 +628,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Fruits Section
     local ShovelFruitsFrame = Instance.new("Frame", FruitsFrame)
-    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 64)  -- Increased height
-    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 166)  -- Adjusted position (36+130=166)
+    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 64)
+    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 166)
     ShovelFruitsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelFruitsFrame.BackgroundTransparency = 0.5
     ShovelFruitsFrame.BorderSizePixel = 0
@@ -626,7 +707,7 @@ local success, errorMsg = xpcall(function()
 
     -- Sprinkler List
     local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
-    SprinklerList.Size = UDim2.new(1, 0, 0, 130)  -- Increased height
+    SprinklerList.Size = UDim2.new(1, 0, 0, 130)
     SprinklerList.Position = UDim2.new(0, 0, 0, 36)
     SprinklerList.BackgroundTransparency = 1
     SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -634,8 +715,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Sprinkler Section
     local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
-    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 64)  -- Increased height
-    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 166)  -- Adjusted position (36+130=166)
+    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 64)
+    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 166)
     ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelSprinklerFrame.BackgroundTransparency = 0.5
     ShovelSprinklerFrame.BorderSizePixel = 0
@@ -658,7 +739,7 @@ local success, errorMsg = xpcall(function()
     ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
     ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
     ShovelSprinklerToggle.Text = "OFF"
-    ShovelSprinklerToggle.TextColor3 = Color3.new(1, 1, 1)
+    ShovelSprinklerToggle.TextColor3 = Color3.new(1, 极, 1)
     ShovelSprinklerToggle.Font = Enum.Font.SourceSansBold
     ShovelSprinklerToggle.TextSize = 12
 
@@ -672,7 +753,7 @@ local success, errorMsg = xpcall(function()
     DelayLabel.TextSize = 12
     DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    local DelayBox = Instance.new("TextBox", ShovelSprinklerFrame)
+    local DelayBox = Instance.new("TextBox", ShovelSprinkler极)
     DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)
     DelayBox.Position = UDim2.new(0.7, 5, 0.3, 5)
     DelayBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -680,6 +761,80 @@ local success, errorMsg = xpcall(function()
     DelayBox.TextColor3 = Color3.new(1, 1, 1)
     DelayBox.Font = Enum.Font.SourceSansBold
     DelayBox.TextSize = 12
+
+    -- NEW PLANTS Column (for destroying entire plants)
+    local PlantsFrame = Instance.new("Frame", MainFrame)
+    PlantsFrame.Size = UDim2.new(0, 110, 0, 230)
+    PlantsFrame.Position = UDim2.new(0, 280, 0, 22)  -- Positioned to the right of sprinkler column
+    PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    PlantsFrame.BackgroundTransparency = 0.3
+    PlantsFrame.BorderSizePixel = 0
+
+    local PlantsCorner = Instance.new("UICorner", PlantsFrame)
+    PlantsCorner.CornerRadius = UDim.new(0, 6)
+
+    local PlantsLabel = Instance.new("TextLabel", PlantsFrame)
+    PlantsLabel.Size = UDim2.new(1, 0, 0, 16)
+    PlantsLabel.Position = UDim2.new(0, 0, 0, 0)
+    PlantsLabel.BackgroundTransparency = 1
+    PlantsLabel.Text = "PLANTS"
+    PlantsLabel.TextColor3 = Color3.new(1, 1, 1)
+    PlantsLabel.Font = Enum.Font.SourceSansBold
+    PlantsLabel.TextSize = 12
+
+    local PlantsSearchBox = Instance.new("TextBox", PlantsFrame)
+    PlantsSearchBox.Size = UDim2.new(1, -10, 0, 20)
+    PlantsSearchBox.Position = UDim2.new(0, 5, 0, 16)
+    PlantsSearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    PlantsSearchBox.TextColor3 = Color3.new(1, 1, 1)
+    PlantsSearchBox.PlaceholderText = "Search plants..."
+    PlantsSearchBox.Font = Enum.Font.SourceSans
+    PlantsSearchBox.TextSize = 14
+    PlantsSearchBox.ClearTextOnFocus = false
+
+    -- Plants List Container
+    local PlantsListContainer = Instance.new("Frame", PlantsFrame)
+    PlantsListContainer.Size = UDim2.new(1, 0, 0, 130)
+    PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
+    Plants极Container.BackgroundTransparency = 1
+    PlantsListContainer.Name = "PlantsListContainer"
+
+    local PlantsList = Instance.new("ScrollingFrame", PlantsListContainer)
+    PlantsList.Size = UDim2.new(1, 0, 1, 0)
+    PlantsList.BackgroundTransparency = 1
+    PlantsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    PlantsList.ScrollBarThickness = 4
+    PlantsList.Parent = PlantsListContainer
+
+    -- Destroy Plants Section
+    local DestroyPlantsFrame = Instance.new("Frame", PlantsFrame)
+    DestroyPlantsFrame.Size = UDim2.new(1, 0, 0, 64)
+    DestroyPlantsFrame.Position = UDim2.new(0, 0, 0, 166)
+    DestroyPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    DestroyPlantsFrame.BackgroundTransparency = 0.5
+    DestroyPlantsFrame.BorderSizePixel = 0
+    DestroyPlantsFrame.Name = "DestroyPlants"
+
+    local DestroyPlantsCorner = Instance.new("UICorner", DestroyPlantsFrame)
+    DestroyPlantsCorner.CornerRadius = UDim.new(0, 6)
+
+    local DestroyPlantsLabel = Instance.new("TextLabel", DestroyPlantsFrame)
+    DestroyPlantsLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    DestroyPlantsLabel.Position = UDim2.new(0, 0, 0, 0)
+    DestroyPlantsLabel.BackgroundTransparency = 1
+    DestroyPlantsLabel.Text = "DESTROY PLANTS"
+    DestroyPlantsLabel.TextColor3 = Color3.new(1, 1, 1)
+    DestroyPlantsLabel.Font = Enum.Font.SourceSansBold
+    DestroyPlantsLabel.TextSize = 12
+
+    local DestroyPlantsToggle = Instance.new("TextButton", DestroyPlantsFrame)
+    DestroyPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
+    DestroyPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
+    DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    DestroyPlantsToggle.Text = "OFF"
+    DestroyPlantsToggle.TextColor3 = Color3.new(1, 1, 1)
+    DestroyPlantsToggle.Font = Enum.Font.SourceSansBold
+    DestroyPlantsToggle.TextSize = 12
 
     -- Toggle UI Button
     local ToggleBtn = Instance.new("ImageButton", ScreenGui)
@@ -716,7 +871,7 @@ local success, errorMsg = xpcall(function()
     glow.ZIndex = 98
     glow.Visible = false
 
-    -- Plant Button Creation
+    -- Plant Button Creation (for fruits)
     local function CreatePlantButton(plant, rarity, yPosition)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 18)
@@ -753,6 +908,43 @@ local success, errorMsg = xpcall(function()
         return btn
     end
 
+    -- Plant Button Creation (for destroying plants)
+    local function CreatePlantDestructionButton(plant, rarity, yPosition)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 18)
+        btn.Position = UDim2.new(0, 5, 0, yPosition)
+        btn.BackgroundColor3 = RarityColors[rarity]
+        btn.Text = plant
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 12
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        
+        local padding = Instance.new("UIPadding", btn)
+        padding.PaddingLeft = UDim.new(0, 5)
+        
+        if Whitelisted_PlantsForDestruction[plant] then
+            btn.BackgroundTransparency = 0.3
+        else
+            btn.BackgroundTransparency = 0.7
+        end
+        
+        btn.MouseButton1Click:Connect(function()
+            Whitelisted_PlantsForDestruction[plant] = not Whitelisted_PlantsForDestruction[plant]
+            
+            if Whitelisted_PlantsForDestruction[plant] then
+                btn.BackgroundTransparency = 0.3
+                showNotification(plant .. " selected for destruction")
+            else
+                btn.BackgroundTransparency = 0.7
+                showNotification(plant .. " removed from destruction list")
+            end
+        end)
+        
+        return btn
+    end
+
     -- Sprinkler Button Creation
     local function CreateSprinklerButton(sprinkler, yPosition)
         local displayName = sprinkler:gsub(" Sprinkler", "")
@@ -763,7 +955,7 @@ local success, errorMsg = xpcall(function()
         btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
         btn.Text = displayName
         btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.Font = Enum.Font.SourceSansBold
+        btn.Font极 Enum.Font.SourceSansBold
         btn.TextSize = 12
         btn.TextXAlignment = Enum.TextXAlignment.Left
         btn.AutoButtonColor = false
@@ -792,8 +984,8 @@ local success, errorMsg = xpcall(function()
         return btn
     end
 
-    -- Plant Display Functions
-    local function ShowAllPlants()
+    -- Plant Display Functions for fruits
+    local function ShowAllFruits()
         FruitsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
@@ -810,34 +1002,52 @@ local success, errorMsg = xpcall(function()
         FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
-    local function ShowPlantsByRarity(rarity)
-        FruitsList:ClearAllChildren()
+    -- Plant Display Functions for plant destruction
+    local function ShowAllPlantsForDestruction()
+        PlantsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
+                btn.Parent = PlantsList
+                yPosition = yPosition + rowHeight
+            end
+        end
+        
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    local function ShowPlantsByRarityForDestruction(rarity)
+        PlantsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
         
         local plants = PlantData[rarity] or {}
         for _, plant in ipairs(plants) do
-            local btn = CreatePlantButton(plant, rarity, yPosition)
-            btn.Parent = FruitsList
+            local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
+            btn.Parent = PlantsList
             yPosition = yPosition + rowHeight
         end
         
-        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
-    local function SearchPlants(searchTerm)
-        FruitsList:ClearAllChildren()
+    local function SearchPlantsForDestruction(searchTerm)
+        PlantsList:ClearAllChildren()
         local yPosition = 0
         local rowHeight = 20
         
         if searchTerm == "" then
             for _, btn in ipairs(RarityList:GetChildren()) do
                 if btn:IsA("TextButton") and btn.BackgroundTransparency == 0.1 then
-                    ShowPlantsByRarity(btn.Text)
+                    ShowPlantsByRarityForDestruction(btn.Text)
                     return
                 end
             end
-            ShowAllPlants()
+            ShowAllPlantsForDestruction()
             return
         end
         
@@ -845,14 +1055,14 @@ local success, errorMsg = xpcall(function()
             local plants = PlantData[rarity]
             for _, plant in ipairs(plants) do
                 if string.find(string.lower(plant), string.lower(searchTerm)) then
-                    local btn = CreatePlantButton(plant, rarity, yPosition)
-                    btn.Parent = FruitsList
+                    local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
+                    btn.Parent = PlantsList
                     yPosition = yPosition + rowHeight
                 end
             end
         end
         
-        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     -- Populate sprinkler list
@@ -888,6 +1098,11 @@ local success, errorMsg = xpcall(function()
         SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end)
 
+    -- Search handler for plant destruction
+    PlantsSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        SearchPlantsForDestruction(PlantsSearchBox.Text)
+    end)
+
     -- Populate Rarity List
     for _, rarity in ipairs(RarityOrder) do
         local btn = Instance.new("TextButton")
@@ -916,6 +1131,7 @@ local success, errorMsg = xpcall(function()
                 
                 btn.BackgroundTransparency = 0.1
                 ShowPlantsByRarity(btn.Text)
+                ShowPlantsByRarityForDestruction(btn.Text)
             end)
         end
     end
@@ -963,6 +1179,27 @@ local success, errorMsg = xpcall(function()
             if ShovelSprinklerThread then
                 task.cancel(ShovelSprinklerThread)
                 ShovelSprinklerThread = nil
+            end
+        end
+    end)
+
+    -- Destroy Plants Toggle
+    DestroyPlantsToggle.MouseButton1Click:Connect(function()
+        AutoDestroyPlants = not AutoDestroyPlants
+        
+        if AutoDestroyPlants then
+            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+            DestroyPlantsToggle.Text = "ON"
+            showNotification("Auto Destroy Plants: ON")
+            StartAutoDestroyPlants()
+        else
+            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+            DestroyPlantsToggle.Text = "OFF"
+            showNotification("Auto Destroy Plants: OFF")
+            -- Immediately stop destroy plants thread
+            if DestroyPlantsThread then
+                task.cancel(DestroyPlantsThread)
+                DestroyPlantsThread = nil
             end
         end
     end)
@@ -1052,7 +1289,8 @@ local success, errorMsg = xpcall(function()
     end)
 
     -- Initialize
-    ShowAllPlants()
+    ShowAllFruits()
+    ShowAllPlantsForDestruction()
     PopulateSprinklerList()
     showNotification("Punk Team Infinite Script Loaded!")
 
