@@ -71,15 +71,33 @@ local function hasFruitBelowThreshold(parent, threshold)
 end
 
 local function FireActivationEvents(plantCFrame)
-    local inputGateway = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
+    local player = Players.LocalPlayer
+    local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
+    local inputGateway2 = player.Character and player.Character:FindFirstChild("InputGateway") and player.Character.InputGateway:FindFirstChild("Activation")
 
-    -- Fire false activation twice
-    inputGateway:FireServer(false, plantCFrame)
-    inputGateway:FireServer(false, plantCFrame)
+    -- Fire false activation twice with delay
+    inputGateway1:FireServer(false, plantCFrame)
+    task.wait(0.1)
+    inputGateway1:FireServer(false, plantCFrame)
+    task.wait(0.1)
+    if inputGateway2 then
+        inputGateway2:FireServer(false, plantCFrame)
+        task.wait(0.1)
+        inputGateway2:FireServer(false, plantCFrame)
+        task.wait(0.1)
+    end
 
-    -- Fire true activation twice
-    inputGateway:FireServer(true, plantCFrame)
-    inputGateway:FireServer(true, plantCFrame)
+    -- Fire true activation twice with delay
+    inputGateway1:FireServer(true, plantCFrame)
+    task.wait(0.1)
+    inputGateway1:FireServer(true, plantCFrame)
+    task.wait(0.1)
+    if inputGateway2 then
+        inputGateway2:FireServer(true, plantCFrame)
+        task.wait(0.1)
+        inputGateway2:FireServer(true, plantCFrame)
+        task.wait(0.1)
+    end
 end
 
 local function DestroyPlants()
@@ -122,20 +140,26 @@ local function DestroyPlants()
             end
 
             if shouldDestroy then
+                if not plant.PrimaryPart then
+                    warn("Plant " .. plant.Name .. " missing PrimaryPart!")
+                    continue
+                end
+
                 print("Destroying plant:", plant.Name)
 
-                if hrp and plant.PrimaryPart then
+                if hrp then
                     hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 3)
                     task.wait(0.3)
                 end
 
+                FireActivationEvents(plant.PrimaryPart.CFrame)
+                task.wait(0.3)
+
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
 
-                FireActivationEvents(plant.PrimaryPart.CFrame)
-
                 destroyedCount = destroyedCount + 1
-                task.wait(0.3)
+                task.wait(0.5) -- increased delay to avoid server spam
             end
         else
             print("Plant not whitelisted:", plant.Name)
