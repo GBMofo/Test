@@ -400,7 +400,7 @@ local success, errorMsg = xpcall(function()
         end
     end
 
-    -- FIXED DESTROY PLANTS FUNCTIONALITY (using Remove_Item event)
+    -- FIXED DESTROY PLANTS FUNCTIONALITY
 local function DestroyPlants()
     local farm = GetFarm(LocalPlayer.Name)
     if not farm then
@@ -437,44 +437,41 @@ local function DestroyPlants()
     
     local destroyedCount = 0
     
+    -- WORKING PLANT DESTRUCTION CODE
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
         if Whitelisted_PlantsForDestruction[plant.Name] then
-            local shouldDestroy = true
-            
-            -- Only check fruits if we have a destruction threshold
-            if DestructionThreshold > 0 then
-                shouldDestroy = false
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                if fruitsFolder then
-                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        local weightValue = fruit:FindFirstChild("Weight")
-                        if weightValue and weightValue.Value < DestructionThreshold then
-                            shouldDestroy = true
-                            break
+            local fruitsFolder = plant:FindFirstChild("Fruits")
+            if fruitsFolder then
+                -- Remove fruits below threshold
+                for _, child in ipairs(fruitsFolder:GetChildren()) do
+                    if child:IsA("BasePart") then
+                        local fruitModel = child.Parent
+                        local weightValue = fruitModel and fruitModel:FindFirstChild("Weight")
+                        local weight = (weightValue and weightValue:IsA("NumberValue")) and weightValue.Value or math.huge
+                        
+                        if weight < DestructionThreshold then
+                            pcall(function()
+                                if GameEvents:FindFirstChild("Remove_Item") then
+                                    GameEvents.Remove_Item:FireServer(child)
+                                    destroyedCount = destroyedCount + 1
+                                    task.wait(0.1)
+                                end
+                            end)
                         end
                     end
                 end
-            end
-            
-            if shouldDestroy then
-                pcall(function()
-                    if GameEvents:FindFirstChild("Remove_Item") then
-                        GameEvents.Remove_Item:FireServer(plant)
-                        destroyedCount = destroyedCount + 1
-                    end
-                end)
-                task.wait(0.1)
             end
         end
     end
     
     if destroyedCount > 0 then
-        showNotification("Destroyed " .. destroyedCount .. " plants")
+        showNotification("Removed " .. destroyedCount .. " fruits from plants")
         return true
     end
     
     return false
 end
+
 
     local DestroyPlantsThread
     local function StartAutoDestroyPlants()
