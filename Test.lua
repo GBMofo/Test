@@ -1,7 +1,30 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
+local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
+local Farms = workspace:WaitForChild("Farm")
+
+-- Automatically equip the shovel tool
+local function EquipShovel()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return false end
+    local shovel = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
+    if not shovel then
+        warn("Shovel [Destroy Plants] not found!")
+        return false
+    end
+    if shovel.Parent == backpack then
+        shovel.Parent = character
+    end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:EquipTool(shovel)
+        return true
+    end
+    return false
+end
 
 local function GetFarmOwner(farm)
     return farm:FindFirstChild("Important") 
@@ -11,7 +34,7 @@ local function GetFarmOwner(farm)
 end
 
 local function GetFarm(playerName)
-    for _, farm in pairs(workspace.Farm:GetChildren()) do
+    for _, farm in pairs(Farms:GetChildren()) do
         if GetFarmOwner(farm) == playerName then
             return farm
         end
@@ -19,16 +42,39 @@ local function GetFarm(playerName)
     return nil
 end
 
-local farm = GetFarm(LocalPlayer.Name)
-local plantsPhysical = farm and farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Plants_Physical")
-if plantsPhysical then
+local function DestroyTomatoPlants()
+    if not EquipShovel() then
+        warn("Could not equip shovel!")
+        return
+    end
+
+    local farm = GetFarm(LocalPlayer.Name)
+    if not farm then
+        warn("Farm not found!")
+        return
+    end
+    local important = farm:FindFirstChild("Important")
+    if not important then
+        warn("Important folder not found!")
+        return
+    end
+    local plantsPhysical = important:FindFirstChild("Plants_Physical")
+    if not plantsPhysical then
+        warn("Plants_Physical folder not found!")
+        return
+    end
+
+    local destroyed = 0
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
         if plant.Name == "Tomato" and plant:IsA("Model") then
-            local mainPart = plant:FindFirstChildWhichIsA("BasePart", true)
-            if mainPart and GameEvents:FindFirstChild("Remove_Item") then
-                GameEvents.Remove_Item:FireServer(mainPart)
-                print("Tried to remove", plant.Name, mainPart.Name)
+            if GameEvents:FindFirstChild("Delete_Object") then
+                GameEvents.Delete_Object:FireServer(plant)
+                destroyed = destroyed + 1
+                task.wait(0.1) -- slight delay to avoid flooding
             end
         end
     end
+    print("Destroyed "..destroyed.." Tomato plants.")
 end
+
+DestroyTomatoPlants()
