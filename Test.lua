@@ -2,7 +2,28 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Farms = workspace:WaitForChild("Farm")
 
--- Helper to get your farm
+-- Automatically equips the shovel tool
+local function EquipShovel()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return false end
+    local shovel = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
+    if not shovel then
+        warn("Shovel [Destroy Plants] not found!")
+        return false
+    end
+    if shovel.Parent == backpack then
+        shovel.Parent = character
+    end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:EquipTool(shovel)
+        return true
+    end
+    return false
+end
+
 local function GetFarmOwner(farm)
     return farm:FindFirstChild("Important") 
        and farm.Important:FindFirstChild("Data") 
@@ -19,8 +40,12 @@ local function GetFarm(playerName)
     return nil
 end
 
--- Destroy all Tomato plants by setting the shovel attribute
 local function DestroyTomatoPlants()
+    if not EquipShovel() then
+        warn("Could not equip shovel!")
+        return
+    end
+
     local farm = GetFarm(LocalPlayer.Name)
     if not farm then
         warn("Farm not found!")
