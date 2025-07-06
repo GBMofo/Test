@@ -20,7 +20,7 @@ local farm = workspaceFarm and workspaceFarm:FindFirstChild("Farm")
 local importantFolder = farm and farm:FindFirstChild("Important")
 local plantsFolder = importantFolder and importantFolder:FindFirstChild("Plants_Physical")
 
-local plantsToTarget = { "Corn" }
+local plantsToTarget = { "Tomato" }
 
 local Remove_Item = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
 
