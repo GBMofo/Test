@@ -182,13 +182,17 @@ local success, errorMsg = xpcall(function()
         notification:Destroy()
     end
 
-    -- Countdown Notification System
+    -- Enhanced Countdown Notification System
     local function showCountdownNotification(count)
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then return end
+        if not playerGui then return nil, nil end
         
         local screenGui = playerGui:FindFirstChild("PunkTeamInfinite")
-        if not screenGui then return end
+        if not screenGui then
+            screenGui = Instance.new("ScreenGui")
+            screenGui.Name = "PunkTeamInfinite"
+            screenGui.Parent = playerGui
+        end
         
         -- Remove any existing countdown notification
         for _, obj in ipairs(screenGui:GetChildren()) do
@@ -197,11 +201,11 @@ local success, errorMsg = xpcall(function()
             end
         end
         
-        -- Create the notification frame
+        -- Create larger notification frame
         local notification = Instance.new("Frame")
         notification.Name = "CountdownNotification"
-        notification.Size = UDim2.new(0, 300, 0, 50)
-        notification.Position = UDim2.new(0.5, -150, 0.3, 0)
+        notification.Size = UDim2.new(0, 400, 0, 80)  -- Bigger size
+        notification.Position = UDim2.new(0.5, -200, 0.5, -40)  -- Centered
         notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         notification.BackgroundTransparency = 0.3
         notification.BorderSizePixel = 0
@@ -210,23 +214,24 @@ local success, errorMsg = xpcall(function()
         
         -- Rounded corners
         local corner = Instance.new("UICorner", notification)
-        corner.CornerRadius = UDim.new(0, 8)
+        corner.CornerRadius = UDim.new(0, 12)  -- Larger radius
         
         -- Red border stroke
         local stroke = Instance.new("UIStroke", notification)
         stroke.Color = Color3.fromRGB(255, 50, 50)
-        stroke.Thickness = 2
+        stroke.Thickness = 3  -- Thicker border
         
-        -- Text label inside notification
+        -- Text label inside notification (bigger text)
         local label = Instance.new("TextLabel", notification)
-        label.Size = UDim2.new(1, -10, 1, -10)
-        label.Position = UDim2.new(0, 5, 0, 5)
+        label.Size = UDim2.new(1, -20, 1, -20)
+        label.Position = UDim2.new(0, 10, 0, 10)
         label.BackgroundTransparency = 1
-        label.Text = "Loading plant data... " .. count .. " seconds remaining"
+        label.Text = "Loading plant data...\n" .. count .. " seconds remaining"
         label.TextColor3 = Color3.new(1, 1, 1)
         label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 18
+        label.TextSize = 24  -- Larger text size
         label.TextWrapped = true
+        label.TextYAlignment = Enum.TextYAlignment.Center
         
         -- Start fully transparent for fade-in effect
         notification.BackgroundTransparency = 1
@@ -585,7 +590,7 @@ local success, errorMsg = xpcall(function()
 
     -- Plants List Container (top half)
     local PlantsListContainer = Instance.new("Frame", PlantsFrame)
-    PlantsListContainer.Size = UDim2.new(1, 0, 0.65, -5)  -- Adjusted to prevent overlap
+    PlantsListContainer.Size = UDim2.new(1, 0, 0, 126)  -- Fixed height to prevent overlap
     PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
     PlantsListContainer.BackgroundTransparency = 1
     PlantsListContainer.Name = "PlantsListContainer"
@@ -599,8 +604,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Plants Section (bottom half)
     local ShovelPlantsFrame = Instance.new("Frame", PlantsFrame)
-    ShovelPlantsFrame.Size = UDim2.new(1, 0, 0.35, -5)  -- Adjusted to prevent overlap
-    ShovelPlantsFrame.Position = UDim2.new(0, 0, 0.65, 5)
+    ShovelPlantsFrame.Size = UDim2.new(1, 0, 0, 63)  -- Fixed height to prevent overlap
+    ShovelPlantsFrame.Position = UDim2.new(0, 0, 0, 167)  -- Positioned below plant list
     ShovelPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelPlantsFrame.BackgroundTransparency = 0.5
     ShovelPlantsFrame.BorderSizePixel = 0
@@ -646,7 +651,7 @@ local success, errorMsg = xpcall(function()
     ThresholdBox.Font = Enum.Font.SourceSansBold
     ThresholdBox.TextSize = 12
 
-    -- Settings Column
+    -- Settings Column (renamed to SPRINKLER)
     local SettingsFrame = Instance.new("Frame", MainFrame)
     SettingsFrame.Size = UDim2.new(0, 100, 0, 230)  -- Adjusted size
     SettingsFrame.Position = UDim2.new(0, 160, 0, 22)
@@ -657,11 +662,12 @@ local success, errorMsg = xpcall(function()
     local SettingsCorner = Instance.new("UICorner", SettingsFrame)
     SettingsCorner.CornerRadius = UDim.new(0, 6)
 
+    -- Renamed label
     local SettingsLabel = Instance.new("TextLabel", SettingsFrame)
     SettingsLabel.Size = UDim2.new(1, 0, 0, 16)
     SettingsLabel.Position = UDim2.new(0, 0, 0, 0)
     SettingsLabel.BackgroundTransparency = 1
-    SettingsLabel.Text = "INFINITE SPRINKLER"
+    SettingsLabel.Text = "SPRINKLER"  -- Changed from "INFINITE SPRINKLER"
     SettingsLabel.TextColor3 = Color3.new(1, 1, 1)
     SettingsLabel.Font = Enum.Font.SourceSansBold
     SettingsLabel.TextSize = 12
@@ -679,7 +685,7 @@ local success, errorMsg = xpcall(function()
 
     -- Sprinkler List
     local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
-    SprinklerList.Size = UDim2.new(1, 0, 0.65, -5)  -- Adjusted to prevent overlap
+    SprinklerList.Size = UDim2.new(1, 0, 0, 126)  -- Fixed height to prevent overlap
     SprinklerList.Position = UDim2.new(0, 0, 0, 36)
     SprinklerList.BackgroundTransparency = 1
     SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -687,8 +693,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Sprinkler Section
     local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
-    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0.35, -5)  -- Adjusted to prevent overlap
-    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0.65, 5)
+    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 63)  -- Fixed height to prevent overlap
+    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 167)  -- Positioned below sprinkler list
     ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelSprinklerFrame.BackgroundTransparency = 0.5
     ShovelSprinklerFrame.BorderSizePixel = 0
@@ -812,13 +818,16 @@ local success, errorMsg = xpcall(function()
         return btn
     end
 
-    -- Create sprinkler buttons
+    -- Create sprinkler buttons with shortened display names
     local function CreateSprinklerButton(sprinkler, yPosition)
+        -- Shorten display name by removing " Sprinkler"
+        local displayName = sprinkler:gsub(" Sprinkler", "")
+        
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 18)
         btn.Position = UDim2.new(0, 5, 0, yPosition)
         btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)  -- Grey color
-        btn.Text = sprinkler
+        btn.Text = displayName  -- Use shortened name
         btn.TextColor3 = Color3.new(1, 1, 1)
         btn.Font = Enum.Font.SourceSansBold
         btn.TextSize = 12
@@ -837,14 +846,14 @@ local success, errorMsg = xpcall(function()
         end
         
         btn.MouseButton1Click:Connect(function()
-            Whitelisted_Sprinklers[sprinkler] = not Whitelisted_Sprinklers[sprinkler]
+            Whitelisted_Sprinklers[sprinkler] = not Whitelisted_Sprinklers[sprinkler]  -- Use full name for functionality
             
             if Whitelisted_Sprinklers[sprinkler] then
                 btn.BackgroundTransparency = 0.3
-                showNotification(sprinkler .. " selected for removal")
+                showNotification(displayName .. " selected for removal")  -- Use shortened name for notification
             else
                 btn.BackgroundTransparency = 0.7
-                showNotification(sprinkler .. " removed from removal list")
+                showNotification(displayName .. " removed from removal list")
             end
         end)
         
