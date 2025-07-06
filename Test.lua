@@ -16,7 +16,7 @@ local Whitelisted_PlantsForDestruction = {
     ["Carrot"] = true,
 }
 
-local function EquipShovel()
+local function EquipAndActivateShovel()
     local character = localPlayer.Character
     if not character then 
         warn("Character not found")
@@ -39,7 +39,9 @@ local function EquipShovel()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if humanoid and tool:IsA("Tool") then
         humanoid:EquipTool(tool)
-        print("Equipped shovel tool")
+        task.wait(0.1) -- small wait to ensure equip
+        tool:Activate() -- simulate tool activation
+        print("Shovel equipped and activated")
         return true
     else
         warn("Humanoid or tool invalid")
@@ -69,8 +71,8 @@ local function hasFruitBelowThreshold(parent, threshold)
 end
 
 local function DestroyPlants()
-    if not EquipShovel() then
-        warn("Failed to equip shovel!")
+    if not EquipAndActivateShovel() then
+        warn("Failed to equip and activate shovel!")
         return false
     end
 
@@ -93,6 +95,7 @@ local function DestroyPlants()
     end
 
     local destroyedCount = 0
+    local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
 
     print("Checking plants for destruction... Total plants:", #plantsPhysical:GetChildren())
 
@@ -108,12 +111,19 @@ local function DestroyPlants()
 
             if shouldDestroy then
                 print("Destroying plant:", plant.Name)
-                -- Fire DeleteObject with plant instance wrapped in a table
-                DeleteObject:FireServer({plant})
-                -- Fire Remove_Item with plant name string
+
+                -- Teleport player near the plant (if possible)
+                if hrp and plant.PrimaryPart then
+                    hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 3)
+                    task.wait(0.3)
+                end
+
+                -- Fire destruction and inventory removal events
+                DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
+
                 destroyedCount = destroyedCount + 1
-                task.wait(0.1)
+                task.wait(0.3) -- delay to avoid spamming server
             end
         else
             print("Plant not whitelisted:", plant.Name)
