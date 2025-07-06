@@ -2,67 +2,97 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local localPlayer = Players.LocalPlayer
-local backpack = localPlayer:WaitForChild("Backpack")
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
+local DeleteObject = GameEvents:WaitForChild("DeleteObject")
 
--- Equip shovel using your existing EquipShovel function with pcall retry logic
+local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
+
+local DestructionThreshold = 100 -- Set weight threshold to 100
+
+local Whitelisted_PlantsForDestruction = {
+    ["Strawberry"] = true,
+    ["Tomato"] = true,
+    -- Add other plant names as needed
+}
+
 local function EquipShovel()
-    -- Your shovel equip logic here
-    -- For example, equipping the shovel tool from backpack or character
-    local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
-    if shovelTool and shovelTool.Parent == backpack then
-        shovelTool.Parent = character
+    local character = localPlayer.Character
+    if not character then return false end
+    
+    if character:FindFirstChild("Shovel [Destroy Plants]") then
+        return true
     end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid and shovelTool then
-        humanoid:EquipTool(shovelTool)
+    
+    local backpack = localPlayer:WaitForChild("Backpack")
+    local shovelTool = backpack:FindFirstChild("Shovel [Destroy Plants]")
+    
+    if shovelTool then
+        shovelTool.Parent = character
         return true
     end
     return false
 end
 
--- Equip shovel with retry logic
-local equipped = false
-for i = 1, 3 do
-    if pcall(EquipShovel) then
-        equipped = true
-        break
+local function DestroyPlants()
+    if not EquipShovel() then
+        warn("Failed to equip shovel!")
+        return false
     end
-    task.wait(0.5)
-end
 
-if not equipped then
-    warn("Failed to equip shovel!")
-    return
-end
-
-local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
-local Remove_Item = GameEvents:WaitForChild("Remove_Item")
-
--- Recursive function to remove all fruit parts without delay
-local function removeFruitsRecursively(parent)
-    for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("BasePart") then
-            Remove_Item:FireServer(child)
-        elseif child:IsA("Model") or child:IsA("Folder") then
-            removeFruitsRecursively(child)
+    local farm = GetFarm(localPlayer)
+    if not farm then
+        warn("Farm not found!")
+        return false
+    end
+    
+    local important = farm:FindFirstChild("Important")
+    if not important then
+        warn("Important folder not found!")
+        return false
+    end
+    
+    local plantsPhysical = important:FindFirstChild("Plants_Physical")
+    if not plantsPhysical then
+        warn("Plants_Physical not found!")
+        return false
+    end
+    
+    local destroyedCount = 0
+    
+    for _, plant in ipairs(plantsPhysical:GetChildren()) do
+        if Whitelisted_PlantsForDestruction[plant.Name] then
+            local shouldDestroy = true
+            
+            if DestructionThreshold > 0 then
+                shouldDestroy = false
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    for _, fruitPart in ipairs(fruitsFolder:GetChildren()) do
+                        local fruitModel = fruitPart.Parent
+                        local weightValue = fruitModel and fruitModel:FindFirstChild("Weight")
+                        if weightValue and weightValue.Value < DestructionThreshold then
+                            shouldDestroy = true
+                            break
+                        end
+                    end
+                end
+            end
+            
+            if shouldDestroy then
+                print("Destroying plant:", plant.Name)
+                DeleteObject:FireServer(plant)
+                destroyedCount = destroyedCount + 1
+                task.wait(0.1)
+            end
         end
     end
-end
-
--- Farm path from your previous code
-local plantsFolder = workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
-
-local plantName = "Strawberry" -- Change to your target plant
-
-for _, plant in ipairs(plantsFolder:GetChildren()) do
-    if plant.Name == plantName then
-        local fruitsFolder = plant:FindFirstChild("Fruits")
-        if fruitsFolder then
-            removeFruitsRecursively(fruitsFolder)
-        else
-            warn("Fruits folder not found in plant '" .. plant.Name .. "'!")
-        end
+    
+    if destroyedCount > 0 then
+        warn("Destroyed " .. destroyedCount .. " plants")
+        return true
     end
+    
+    return false
 end
+
+DestroyPlants()
