@@ -739,7 +739,7 @@ local success, errorMsg = xpcall(function()
     ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
     ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
     ShovelSprinklerToggle.Text = "OFF"
-    ShovelSprinklerToggle.TextColor3 = Color3.new(1, 极, 1)
+    ShovelSprinklerToggle.TextColor3 = Color3.new(1, 1, 1)
     ShovelSprinklerToggle.Font = Enum.Font.SourceSansBold
     ShovelSprinklerToggle.TextSize = 12
 
@@ -753,7 +753,7 @@ local success, errorMsg = xpcall(function()
     DelayLabel.TextSize = 12
     DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    local DelayBox = Instance.new("TextBox", ShovelSprinkler极)
+    local DelayBox = Instance.new("TextBox", ShovelSprinklerFrame)
     DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)
     DelayBox.Position = UDim2.new(0.7, 5, 0.3, 5)
     DelayBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -796,7 +796,7 @@ local success, errorMsg = xpcall(function()
     local PlantsListContainer = Instance.new("Frame", PlantsFrame)
     PlantsListContainer.Size = UDim2.new(1, 0, 0, 130)
     PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
-    Plants极Container.BackgroundTransparency = 1
+    PlantsListContainer.BackgroundTransparency = 1
     PlantsListContainer.Name = "PlantsListContainer"
 
     local PlantsList = Instance.new("ScrollingFrame", PlantsListContainer)
@@ -955,7 +955,7 @@ local success, errorMsg = xpcall(function()
         btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
         btn.Text = displayName
         btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.Font极 Enum.Font.SourceSansBold
+        btn.Font = Enum.Font.SourceSansBold
         btn.TextSize = 12
         btn.TextXAlignment = Enum.TextXAlignment.Left
         btn.AutoButtonColor = false
@@ -1130,16 +1130,10 @@ local success, errorMsg = xpcall(function()
                 end
                 
                 btn.BackgroundTransparency = 0.1
-                ShowPlantsByRarity(btn.Text)
                 ShowPlantsByRarityForDestruction(btn.Text)
             end)
         end
     end
-
-    -- Search handler
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        SearchPlants(SearchBox.Text)
-    end)
 
     -- Shovel Fruits Toggle
     ShovelFruitsToggle.MouseButton1Click:Connect(function()
