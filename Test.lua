@@ -68,6 +68,28 @@ local function hasFruitBelowThreshold(parent, threshold)
     return false
 end
 
+local function GetTargetPart(model)
+    if model.PrimaryPart then
+        return model.PrimaryPart
+    end
+
+    local commonNames = {"Main", "Base", "Hitbox", "Root"}
+    for _, name in ipairs(commonNames) do
+        local part = model:FindFirstChild(name)
+        if part and part:IsA("BasePart") then
+            return part
+        end
+    end
+
+    for _, child in ipairs(model:GetChildren()) do
+        if child:IsA("BasePart") then
+            return child
+        end
+    end
+
+    return nil
+end
+
 local function ClickPart(partCFrame)
     local player = Players.LocalPlayer
     local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
@@ -75,12 +97,10 @@ local function ClickPart(partCFrame)
 
     print("Clicking part at CFrame:", partCFrame)
 
-    -- Mouse button down (click start)
     inputGateway1:FireServer(true, partCFrame)
     if inputGateway2 then inputGateway2:FireServer(true, partCFrame) end
     task.wait(0.1)
 
-    -- Mouse button up (click end)
     inputGateway1:FireServer(false, partCFrame)
     if inputGateway2 then inputGateway2:FireServer(false, partCFrame) end
     task.wait(0.2)
@@ -121,38 +141,33 @@ local function DestroyPlants()
             print("Has fruit below threshold:", shouldDestroy)
 
             if shouldDestroy then
-                if not plant.PrimaryPart then
-                    warn("Plant " .. plant.Name .. " missing PrimaryPart!")
+                local targetPart = GetTargetPart(plant)
+                if not targetPart then
+                    warn("No valid target part found for plant: " .. plant.Name)
                     continue
                 end
 
                 print("Destroying plant:", plant.Name)
 
                 if hrp then
-                    hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 0.5)
+                    hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.5)
                     task.wait(0.3)
                     print("Teleported near plant:", plant.Name)
                 end
 
-                -- Click the plant part
-                ClickPart(plant.PrimaryPart.CFrame)
+                ClickPart(targetPart.CFrame)
 
-                -- Also click each fruit part to ensure destruction triggers
                 if fruitsFolder then
                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        if fruit.PrimaryPart then
+                        local fruitPart = GetTargetPart(fruit) or (fruit:IsA("BasePart") and fruit or nil)
+                        if fruitPart then
                             print("Clicking fruit:", fruit.Name)
-                            ClickPart(fruit.PrimaryPart.CFrame)
-                            task.wait(0.2)
-                        elseif fruit:IsA("BasePart") then
-                            print("Clicking fruit part:", fruit.Name)
-                            ClickPart(fruit.CFrame)
+                            ClickPart(fruitPart.CFrame)
                             task.wait(0.2)
                         end
                     end
                 end
 
-                -- Fire deletion/removal events for plant and fruits
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
                 print("Fired DeleteObject and RemoveItem for plant:", plant.Name)
