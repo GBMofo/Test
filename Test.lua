@@ -68,6 +68,7 @@ local success, errorMsg = xpcall(function()
         Divine = Color3.fromRGB(255, 90, 90),
         Prismatic = Color3.fromRGB(100, 255, 255)
     }
+
     -- Proximity Prompt Controller
     local ProximityPromptController
     local function GetProximityPromptController()
@@ -150,6 +151,58 @@ local success, errorMsg = xpcall(function()
         end)
     end
 
+    -- Enhanced Countdown Notification
+    local function showCountdownNotification(count)
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui then return nil, nil end
+        
+        local screenGui = playerGui:FindFirstChild("PunkTeamInfinite") or Instance.new("ScreenGui")
+        screenGui.Name = "PunkTeamInfinite"
+        screenGui.Parent = playerGui
+        
+        for _, obj in ipairs(screenGui:GetChildren()) do
+            if obj.Name == "CountdownNotification" then obj:Destroy() end
+        end
+        
+        local notification = Instance.new("Frame")
+        notification.Name = "CountdownNotification"
+        notification.Size = UDim2.new(0, 400, 0, 80)
+        notification.Position = UDim2.new(0.5, -200, 0.5, -40)
+        notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        notification.BackgroundTransparency = 0.3
+        notification.BorderSizePixel = 0
+        notification.ZIndex = 100
+        notification.Parent = screenGui
+        
+        local corner = Instance.new("UICorner", notification)
+        corner.CornerRadius = UDim.new(0, 12)
+        
+        local stroke = Instance.new("UIStroke", notification)
+        stroke.Color = Color3.fromRGB(255, 50, 50)
+        stroke.Thickness = 3
+        
+        local label = Instance.new("TextLabel", notification)
+        label.Size = UDim2.new(1, -20, 1, -20)
+        label.Position = UDim2.new(0, 10, 0, 10)
+        label.BackgroundTransparency = 1
+        label.Text = "Loading plant data...\n" .. count .. " seconds remaining"
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 24
+        label.TextWrapped = true
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        
+        notification.BackgroundTransparency = 1
+        label.TextTransparency = 1
+        
+        local fadeIn = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 0.3})
+        local textFadeIn = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 0})
+        fadeIn:Play()
+        textFadeIn:Play()
+        
+        return notification, label
+    end
+
     -- Farm Functions
     local function GetFarmOwner(Farm)
         return Farm and Farm:FindFirstChild("Important") and Farm.Important:FindFirstChild("Data") and Farm.Important.Data:FindFirstChild("Owner") and Farm.Important.Data.Owner.Value
@@ -171,6 +224,7 @@ local success, errorMsg = xpcall(function()
 
     local MyFarm = GetFarm(LocalPlayer.Name)
     local PlantsPhysical = MyFarm and MyFarm.Important and MyFarm.Important:FindFirstChild("Plants_Physical")
+
     -- SHOVEL PLANTS FUNCTIONALITY
     local function EquipShovel()
         local character = LocalPlayer.Character
@@ -255,8 +309,9 @@ local success, errorMsg = xpcall(function()
         
         local shoveledSomething = false
         
-        -- Process all plants in the Plants_Physical folder
+        -- FIX: Process all plants in the Plants_Physical folder
         for _, plant in ipairs(plantsPhysical:GetChildren()) do
+            -- Check if this plant is in our whitelist
             if Whitelisted_Plants[plant.Name] then
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
@@ -295,6 +350,7 @@ local success, errorMsg = xpcall(function()
             end)
         end
     end
+
     -- SHOVEL SPRINKLER FUNCTIONALITY
     local function RemoveSprinklers()
         local farm = GetFarm(LocalPlayer.Name)
@@ -385,6 +441,7 @@ local success, errorMsg = xpcall(function()
             if Whitelisted_PlantsForDestruction[plant.Name] then
                 local shouldDestroy = true
                 
+                -- Only check fruits if we have a destruction threshold
                 if DestructionThreshold > 0 then
                     shouldDestroy = false
                     local fruitsFolder = plant:FindFirstChild("Fruits")
@@ -440,6 +497,7 @@ local success, errorMsg = xpcall(function()
             end)
         end
     end
+
     -- UI Creation
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "PunkTeamInfinite"
@@ -543,6 +601,7 @@ local success, errorMsg = xpcall(function()
     local RarityLayout = Instance.new("UIListLayout", RarityList)
     RarityLayout.Padding = UDim.new(0, 2)
     RarityLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
     -- Fruits Column
     local FruitsFrame = Instance.new("Frame", MainFrame)
     FruitsFrame.Size = UDim2.new(0, 110, 0, 230)
@@ -587,152 +646,756 @@ local success, errorMsg = xpcall(function()
     FruitsList.ScrollBarThickness = 4
     FruitsList.Parent = FruitsListContainer
 
-    -- Connect Fruits Search Box
-    local function PopulateFruitsList(filter)
+    -- Shovel Fruits Section
+    local ShovelFruitsFrame = Instance.new("Frame", FruitsFrame)
+    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 64)
+    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 166)
+    ShovelFruitsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    ShovelFruitsFrame.BackgroundTransparency = 0.5
+    ShovelFruitsFrame.BorderSizePixel = 0
+    ShovelFruitsFrame.Name = "ShovelFruits"
+
+    local ShovelFruitsCorner = Instance.new("UICorner", ShovelFruitsFrame)
+    ShovelFruitsCorner.CornerRadius = UDim.new(0, 6)
+
+    local ShovelFruitsLabel = Instance.new("TextLabel", ShovelFruitsFrame)
+    ShovelFruitsLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    ShovelFruitsLabel.Position = UDim2.new(0, 0, 0, 0)
+    ShovelFruitsLabel.BackgroundTransparency = 1
+    ShovelFruitsLabel.Text = "SHOVEL FRUITS"
+    ShovelFruitsLabel.TextColor3 = Color3.new(1, 1, 1)
+    ShovelFruitsLabel.Font = Enum.Font.SourceSansBold
+    ShovelFruitsLabel.TextSize = 12
+
+    local ShovelFruitsToggle = Instance.new("TextButton", ShovelFruitsFrame)
+    ShovelFruitsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
+    ShovelFruitsToggle.Position = UDim2.new(0, 5, 0.3, 5)
+    ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    ShovelFruitsToggle.Text = "OFF"
+    ShovelFruitsToggle.TextColor3 = Color3.new(1, 1, 1)
+    ShovelFruitsToggle.Font = Enum.Font.SourceSansBold
+    ShovelFruitsToggle.TextSize = 12
+
+    local ThresholdLabel = Instance.new("TextLabel", ShovelFruitsFrame)
+    ThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
+    ThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
+    ThresholdLabel.BackgroundTransparency = 1
+    ThresholdLabel.Text = "Min/kg:"
+    ThresholdLabel.TextColor3 = Color3.new(1, 1, 1)
+    ThresholdLabel.Font = Enum.Font.SourceSans
+    ThresholdLabel.TextSize = 12
+    ThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local ThresholdBox = Instance.new("TextBox", ShovelFruitsFrame)
+    ThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)
+    ThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
+    ThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    ThresholdBox.Text = "200"
+    ThresholdBox.TextColor3 = Color3.new(1, 1, 1)
+    ThresholdBox.Font = Enum.Font.SourceSansBold
+    ThresholdBox.TextSize = 12
+
+    -- SPRINKLER Column
+    local SettingsFrame = Instance.new("Frame", MainFrame)
+    SettingsFrame.Size = UDim2.new(0, 110, 0, 230)
+    SettingsFrame.Position = UDim2.new(0, 170, 0, 22)
+    SettingsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    SettingsFrame.BackgroundTransparency = 0.3
+    SettingsFrame.BorderSizePixel = 0
+
+    local SettingsCorner = Instance.new("UICorner", SettingsFrame)
+    SettingsCorner.CornerRadius = UDim.new(0, 6)
+
+    local SettingsLabel = Instance.new("TextLabel", SettingsFrame)
+    SettingsLabel.Size = UDim2.new(1, 0, 0, 16)
+    SettingsLabel.Position = UDim2.new(0, 0, 0, 0)
+    SettingsLabel.BackgroundTransparency = 1
+    SettingsLabel.Text = "SPRINKLER"
+    SettingsLabel.TextColor3 = Color3.new(1, 1, 1)
+    SettingsLabel.Font = Enum.Font.SourceSansBold
+    SettingsLabel.TextSize = 12
+
+    local SprinklerSearchBox = Instance.new("TextBox", SettingsFrame)
+    SprinklerSearchBox.Size = UDim2.new(1, -10, 0, 20)
+    SprinklerSearchBox.Position = UDim2.new(0, 5, 0, 16)
+    SprinklerSearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    SprinklerSearchBox.TextColor3 = Color3.new(1, 1, 1)
+    SprinklerSearchBox.PlaceholderText = "Search sprinklers..."
+    SprinklerSearchBox.Font = Enum.Font.SourceSans
+    SprinklerSearchBox.TextSize = 14
+    SprinklerSearchBox.ClearTextOnFocus = false
+
+    -- Sprinkler List
+    local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
+    SprinklerList.Size = UDim2.new(1, 0, 0, 130)
+    SprinklerList.Position = UDim2.new(0, 0, 0, 36)
+    SprinklerList.BackgroundTransparency = 1
+    SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    SprinklerList.ScrollBarThickness = 4
+
+    -- Shovel Sprinkler Section
+    local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
+    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 64)
+    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 166)
+    ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    ShovelSprinklerFrame.BackgroundTransparency = 0.5
+    ShovelSprinklerFrame.BorderSizePixel = 0
+    ShovelSprinklerFrame.Name = "ShovelSprinkler"
+
+    local ShovelSprinklerCorner = Instance.new("UICorner", ShovelSprinklerFrame)
+    ShovelSprinklerCorner.CornerRadius = UDim.new(0, 6)
+
+    local ShovelSprinklerLabel = Instance.new("TextLabel", ShovelSprinklerFrame)
+    ShovelSprinklerLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    ShovelSprinklerLabel.Position = UDim2.new(0, 0, 0, 0)
+    ShovelSprinklerLabel.BackgroundTransparency = 1
+    ShovelSprinklerLabel.Text = "SHOVEL SPRINKLER"
+    ShovelSprinklerLabel.TextColor3 = Color3.new(1, 1, 1)
+    ShovelSprinklerLabel.Font = Enum.Font.SourceSansBold
+    ShovelSprinklerLabel.TextSize = 12
+
+    local ShovelSprinklerToggle = Instance.new("TextButton", ShovelSprinklerFrame)
+    ShovelSprinklerToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
+    ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
+    ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    ShovelSprinklerToggle.Text = "OFF"
+    ShovelSprinklerToggle.TextColor3 = Color3.new(1, 1, 1)
+    ShovelSprinklerToggle.Font = Enum.Font.SourceSansBold
+    ShovelSprinklerToggle.TextSize = 12
+
+    local DelayLabel = Instance.new("TextLabel", ShovelSprinklerFrame)
+    DelayLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
+    DelayLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
+    DelayLabel.BackgroundTransparency = 1
+    DelayLabel.Text = "Delay/s:"
+    DelayLabel.TextColor3 = Color3.new(1, 1, 1)
+    DelayLabel.Font = Enum.Font.SourceSans
+    DelayLabel.TextSize = 12
+    DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local DelayBox = Instance.new("TextBox", ShovelSprinklerFrame)
+    DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)
+    DelayBox.Position = UDim2.new(0.7, 5, 0.3, 5)
+    DelayBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DelayBox.Text = "0"
+    DelayBox.TextColor3 = Color3.new(1, 1, 1)
+    DelayBox.Font = Enum.Font.SourceSansBold
+    DelayBox.TextSize = 12
+
+    -- PLANTS Column (for destroying entire plants)
+    local PlantsFrame = Instance.new("Frame", MainFrame)
+    PlantsFrame.Size = UDim2.new(0, 110, 0, 230)
+    PlantsFrame.Position = UDim2.new(0, 280, 0, 22)
+    PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    PlantsFrame.BackgroundTransparency = 0.3
+    PlantsFrame.BorderSizePixel = 0
+
+    local PlantsCorner = Instance.new("UICorner", PlantsFrame)
+    PlantsCorner.CornerRadius = UDim.new(0, 6)
+
+    local PlantsLabel = Instance.new("TextLabel", PlantsFrame)
+    PlantsLabel.Size = UDim2.new(1, 0, 0, 16)
+    PlantsLabel.Position = UDim2.new(0, 0, 0, 0)
+    PlantsLabel.BackgroundTransparency = 1
+    PlantsLabel.Text = "PLANTS"
+    PlantsLabel.TextColor3 = Color3.new(1, 1, 1)
+    PlantsLabel.Font = Enum.Font.SourceSansBold
+    PlantsLabel.TextSize = 12
+
+    local PlantsSearchBox = Instance.new("TextBox", PlantsFrame)
+    PlantsSearchBox.Size = UDim2.new(1, -10, 0, 20)
+    PlantsSearchBox.Position = UDim2.new(0, 5, 0, 16)
+    PlantsSearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    PlantsSearchBox.TextColor3 = Color3.new(1, 1, 1)
+    PlantsSearchBox.PlaceholderText = "Search plants..."
+    PlantsSearchBox.Font = Enum.Font.SourceSans
+    PlantsSearchBox.TextSize = 14
+    PlantsSearchBox.ClearTextOnFocus = false
+
+    -- Plants List Container
+    local PlantsListContainer = Instance.new("Frame", PlantsFrame)
+    PlantsListContainer.Size = UDim2.new(1, 0, 0, 130)
+    PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
+    PlantsListContainer.BackgroundTransparency = 1
+    PlantsListContainer.Name = "PlantsListContainer"
+
+    local PlantsList = Instance.new("ScrollingFrame", PlantsListContainer)
+    PlantsList.Size = UDim2.new(1, 0, 1, 0)
+    PlantsList.BackgroundTransparency = 1
+    PlantsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    PlantsList.ScrollBarThickness = 4
+    PlantsList.Parent = PlantsListContainer
+
+    -- Destroy Plants Section (FIXED)
+    local DestroyPlantsFrame = Instance.new("Frame", PlantsFrame)
+    DestroyPlantsFrame.Size = UDim2.new(1, 0, 0, 64)
+    DestroyPlantsFrame.Position = UDim2.new(0, 0, 0, 166)
+    DestroyPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    DestroyPlantsFrame.BackgroundTransparency = 0.5
+    DestroyPlantsFrame.BorderSizePixel = 0
+    DestroyPlantsFrame.Name = "DestroyPlants"
+
+    local DestroyPlantsCorner = Instance.new("UICorner", DestroyPlantsFrame)
+    DestroyPlantsCorner.CornerRadius = UDim.new(0, 6)
+
+    local DestroyPlantsLabel = Instance.new("TextLabel", DestroyPlantsFrame)
+    DestroyPlantsLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    DestroyPlantsLabel.Position = UDim2.new(0, 0, 0, 0)
+    DestroyPlantsLabel.BackgroundTransparency = 1
+    DestroyPlantsLabel.Text = "DESTROY PLANTS"
+    DestroyPlantsLabel.TextColor3 = Color3.new(1, 1, 1)
+    DestroyPlantsLabel.Font = Enum.Font.SourceSansBold
+    DestroyPlantsLabel.TextSize = 12
+
+    local DestroyPlantsToggle = Instance.new("TextButton", DestroyPlantsFrame)
+    DestroyPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
+    DestroyPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
+    DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    DestroyPlantsToggle.Text = "OFF"
+    DestroyPlantsToggle.TextColor3 = Color3.new(1, 1, 1)
+    DestroyPlantsToggle.Font = Enum.Font.SourceSansBold
+    DestroyPlantsToggle.TextSize = 12
+
+    -- Min/kg input for destruction threshold
+    local DestroyThresholdLabel = Instance.new("TextLabel", DestroyPlantsFrame)
+    DestroyThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
+    DestroyThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
+    DestroyThresholdLabel.BackgroundTransparency = 1
+    DestroyThresholdLabel.Text = "Min/kg:"
+    DestroyThresholdLabel.TextColor3 = Color3.new(1, 1, 1)
+    DestroyThresholdLabel.Font = Enum.Font.SourceSans
+    DestroyThresholdLabel.TextSize = 12
+    DestroyThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local DestroyThresholdBox = Instance.new("TextBox", DestroyPlantsFrame)
+    DestroyThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)
+    DestroyThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
+    DestroyThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DestroyThresholdBox.Text = "0"
+    DestroyThresholdBox.TextColor3 = Color3.new(1, 1, 1)
+    DestroyThresholdBox.Font = Enum.Font.SourceSansBold
+    DestroyThresholdBox.TextSize = 12
+
+    -- Toggle UI Button
+    local ToggleBtn = Instance.new("ImageButton", ScreenGui)
+    ToggleBtn.Name = "ShowHideESPBtn"
+    ToggleBtn.Size = UDim2.new(0, 38, 0, 38)
+    ToggleBtn.Position = UDim2.new(0, 6, 0, 6)
+    ToggleBtn.BackgroundTransparency = 1
+    ToggleBtn.Image = "rbxassetid://131613009113138"
+    ToggleBtn.ZIndex = 100
+
+    local bg = Instance.new("Frame", ToggleBtn)
+    bg.Name = "Background"
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    bg.BackgroundTransparency = 0.15
+    bg.ZIndex = 99
+
+    local corner = Instance.new("UICorner", bg)
+    corner.CornerRadius = UDim.new(1, 0)
+
+    local stroke = Instance.new("UIStroke", bg)
+    stroke.Color = Color3.fromRGB(255, 50, 50)
+    stroke.Thickness = 2
+
+    local glow = Instance.new("ImageLabel", ToggleBtn)
+    glow.Name = "Glow"
+    glow.Size = UDim2.new(1, 20, 1, 20)
+    glow.Position = UDim2.new(0, -10, 0, -10)
+    glow.Image = "rbxassetid://5028857084"
+    glow.ImageColor3 = Color3.fromRGB(255, 50, 50)
+    glow.ScaleType = Enum.ScaleType.Slice
+    glow.SliceCenter = Rect.new(24, 24, 276, 276)
+    glow.BackgroundTransparency = 1
+    glow.ZIndex = 98
+    glow.Visible = false
+
+    -- Plant Button Creation (for fruits)
+    local function CreatePlantButton(plant, rarity, yPosition)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 18)
+        btn.Position = UDim2.new(0, 5, 0, yPosition)
+        btn.BackgroundColor3 = RarityColors[rarity]
+        btn.Text = plant
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 12
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        
+        local padding = Instance.new("UIPadding", btn)
+        padding.PaddingLeft = UDim.new(0, 5)
+        
+        if Whitelisted_Plants[plant] then
+            btn.BackgroundTransparency = 0.3
+        else
+            btn.BackgroundTransparency = 0.7
+        end
+        
+        btn.MouseButton1Click:Connect(function()
+            Whitelisted_Plants[plant] = not Whitelisted_Plants[plant]
+            
+            if Whitelisted_Plants[plant] then
+                btn.BackgroundTransparency = 0.3
+                showNotification(plant .. " selected for shovel")
+            else
+                btn.BackgroundTransparency = 0.7
+                showNotification(plant .. " removed from shovel list")
+            end
+        end)
+        
+        return btn
+    end
+
+    -- Plant Button Creation (for destroying plants)
+    local function CreatePlantDestructionButton(plant, rarity, yPosition)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 18)
+        btn.Position = UDim2.new(0, 5, 0, yPosition)
+        btn.BackgroundColor3 = RarityColors[rarity]
+        btn.Text = plant
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 12
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        
+        local padding = Instance.new("UIPadding", btn)
+        padding.PaddingLeft = UDim.new(0, 5)
+        
+        if Whitelisted_PlantsForDestruction[plant] then
+            btn.BackgroundTransparency = 0.3
+        else
+            btn.BackgroundTransparency = 0.7
+        end
+        
+        btn.MouseButton1Click:Connect(function()
+            Whitelisted_PlantsForDestruction[plant] = not Whitelisted_PlantsForDestruction[plant]
+            
+            if Whitelisted_PlantsForDestruction[plant] then
+                btn.BackgroundTransparency = 0.3
+                showNotification(plant .. " selected for destruction")
+            else
+                btn.BackgroundTransparency = 0.7
+                showNotification(plant .. " removed from destruction list")
+            end
+        end)
+        
+        return btn
+    end
+
+    -- Sprinkler Button Creation
+    local function CreateSprinklerButton(sprinkler, yPosition)
+        local displayName = sprinkler:gsub(" Sprinkler", "")
+        
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 18)
+        btn.Position = UDim2.new(0, 5, 0, yPosition)
+        btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+        btn.Text = displayName
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 12
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        
+        local padding = Instance.new("UIPadding", btn)
+        padding.PaddingLeft = UDim.new(0, 5)
+        
+        if Whitelisted_Sprinklers[sprinkler] then
+            btn.BackgroundTransparency = 0.3
+        else
+            btn.BackgroundTransparency = 0.7
+        end
+        
+        btn.MouseButton1Click:Connect(function()
+            Whitelisted_Sprinklers[sprinkler] = not Whitelisted_Sprinklers[sprinkler]
+            
+            if Whitelisted_Sprinklers[sprinkler] then
+                btn.BackgroundTransparency = 0.3
+                showNotification(displayName .. " selected for removal")
+            else
+                btn.BackgroundTransparency = 0.7
+                showNotification(displayName .. " removed from removal list")
+            end
+        end)
+        
+        return btn
+    end
+
+    -- Plant Display Functions for fruits
+    local function ShowAllFruits()
         FruitsList:ClearAllChildren()
-        local yPos = 0
-        for rarity, fruits in pairs(PlantData) do
-            for _, fruit in ipairs(fruits) do
-                if not filter or fruit:lower():find(filter:lower()) then
-                    local btn = CreatePlantButton(fruit, rarity, yPos)
+        local yPosition = 0
+        local rowHeight = 20
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                local btn = CreatePlantButton(plant, rarity, yPosition)
+                btn.Parent = FruitsList
+                yPosition = yPosition + rowHeight
+            end
+        end
+        
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    -- FIXED: Added rarity filtering for FRUITS column
+    local function ShowFruitsByRarity(rarity)
+        FruitsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        local plants = PlantData[rarity] or {}
+        for _, plant in ipairs(plants) do
+            local btn = CreatePlantButton(plant, rarity, yPosition)
+            btn.Parent = FruitsList
+            yPosition = yPosition + rowHeight
+        end
+        
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    -- FIXED: Added search for FRUITS column
+    local function SearchFruits(searchTerm)
+        FruitsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        if searchTerm == "" then
+            for _, btn in ipairs(RarityList:GetChildren()) do
+                if btn:IsA("TextButton") and btn.BackgroundTransparency == 0.1 then
+                    ShowFruitsByRarity(btn.Text)
+                    return
+                end
+            end
+            ShowAllFruits()
+            return
+        end
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                if string.find(string.lower(plant), string.lower(searchTerm)) then
+                    local btn = CreatePlantButton(plant, rarity, yPosition)
                     btn.Parent = FruitsList
-                    yPos = yPos + 20
+                    yPosition = yPosition + rowHeight
                 end
             end
         end
-        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPos)
+        
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        PopulateFruitsList(SearchBox.Text)
-    end)
-
-    PopulateFruitsList()
-
--- Auto Shovel Sprinklers Toggle
-local ShovelSprinklerToggle = ShovelSprinklerFrame:FindFirstChild("ShovelSprinklerToggle") or Instance.new("TextButton", ShovelSprinklerFrame)
-ShovelSprinklerToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
-ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
-ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-ShovelSprinklerToggle.Text = "OFF"
-ShovelSprinklerToggle.TextColor3 = Color3.new(1, 1, 1)
-ShovelSprinklerToggle.Font = Enum.Font.SourceSansBold
-ShovelSprinklerToggle.TextSize = 12
-
-ShovelSprinklerToggle.MouseButton1Click:Connect(function()
-    AutoShovelSprinklers = not AutoShovelSprinklers
-    if AutoShovelSprinklers then
-        ShovelSprinklerToggle.Text = "ON"
-        ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        StartAutoShovelSprinklers()
-    else
-        ShovelSprinklerToggle.Text = "OFF"
-        ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        if ShovelSprinklerThread then
-            task.cancel(ShovelSprinklerThread)
-            ShovelSprinklerThread = nil
-        end
-    end
-end)
-
--- Auto Destroy Plants Toggle
-local DestroyPlantsToggle = DestroyPlantsFrame:FindFirstChild("DestroyPlantsToggle") or Instance.new("TextButton", DestroyPlantsFrame)
-DestroyPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
-DestroyPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
-DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-DestroyPlantsToggle.Text = "OFF"
-DestroyPlantsToggle.TextColor3 = Color3.new(1, 1, 1)
-DestroyPlantsToggle.Font = Enum.Font.SourceSansBold
-DestroyPlantsToggle.TextSize = 12
-
-DestroyPlantsToggle.MouseButton1Click:Connect(function()
-    AutoDestroyPlants = not AutoDestroyPlants
-    if AutoDestroyPlants then
-        DestroyPlantsToggle.Text = "ON"
-        DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        StartAutoDestroyPlants()
-    else
-        DestroyPlantsToggle.Text = "OFF"
-        DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        if DestroyPlantsThread then
-            task.cancel(DestroyPlantsThread)
-            DestroyPlantsThread = nil
-        end
-    end
-end)
-
--- Delay input for Shovel Sprinklers
-DelayBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local val = tonumber(DelayBox.Text)
-        if val and val >= 0 then
-            ShovelDelay = val
-            showNotification("Shovel delay set to " .. val .. " seconds")
-        else
-            DelayBox.Text = tostring(ShovelDelay)
-            showNotification("Invalid delay value")
-        end
-    end
-end)
-
--- Destruction threshold input
-DestroyThresholdBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local val = tonumber(DestroyThresholdBox.Text)
-        if val and val >= 0 then
-            DestructionThreshold = val
-            showNotification("Destroy threshold set to " .. val)
-        else
-            DestroyThresholdBox.Text = tostring(DestructionThreshold)
-            showNotification("Invalid destroy threshold")
-        end
-    end
-end)
-
--- Populate Sprinkler List
-local function PopulateSprinklerList(filter)
-    SprinklerList:ClearAllChildren()
-    local yPos = 0
-    for _, sprinkler in ipairs(SprinklerTypes) do
-        if not filter or sprinkler:lower():find(filter:lower()) then
-            local btn = CreateSprinklerButton(sprinkler, yPos)
-            btn.Parent = SprinklerList
-            yPos = yPos + 20
-        end
-    end
-    SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPos)
-end
-
-SprinklerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    PopulateSprinklerList(SprinklerSearchBox.Text)
-end)
-
-PopulateSprinklerList()
-
--- Populate Plants List
-local function PopulatePlantsList(filter)
-    PlantsList:ClearAllChildren()
-    local yPos = 0
-    for rarity, plants in pairs(PlantData) do
-        for _, plant in ipairs(plants) do
-            if not filter or plant:lower():find(filter:lower()) then
-                local btn = CreatePlantDestructionButton(plant, rarity, yPos)
+    -- Plant Display Functions for plant destruction
+    local function ShowAllPlantsForDestruction()
+        PlantsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
                 btn.Parent = PlantsList
-                yPos = yPos + 20
+                yPosition = yPosition + rowHeight
             end
         end
+        
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
-    PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPos)
-end
 
-PlantsSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    PopulatePlantsList(PlantsSearchBox.Text)
-end)
+    local function ShowPlantsByRarityForDestruction(rarity)
+        PlantsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        local plants = PlantData[rarity] or {}
+        for _, plant in ipairs(plants) do
+            local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
+            btn.Parent = PlantsList
+            yPosition = yPosition + rowHeight
+        end
+        
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
 
-PopulatePlantsList()
+    local function SearchPlantsForDestruction(searchTerm)
+        PlantsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        if searchTerm == "" then
+            for _, btn in ipairs(RarityList:GetChildren()) do
+                if btn:IsA("TextButton") and btn.BackgroundTransparency == 0.1 then
+                    ShowPlantsByRarityForDestruction(btn.Text)
+                    return
+                end
+            end
+            ShowAllPlantsForDestruction()
+            return
+        end
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                if string.find(string.lower(plant), string.lower(searchTerm)) then
+                    local btn = CreatePlantDestructionButton(plant, rarity, yPosition)
+                    btn.Parent = PlantsList
+                    yPosition = yPosition + rowHeight
+                end
+            end
+        end
+        
+        PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    -- Populate sprinkler list
+    local function PopulateSprinklerList()
+        SprinklerList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        for _, sprinkler in ipairs(SprinklerTypes) do
+            local btn = CreateSprinklerButton(sprinkler, yPosition)
+            btn.Parent = SprinklerList
+            yPosition = yPosition + rowHeight
+        end
+        
+        SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    -- Search handler for sprinklers
+    SprinklerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local searchTerm = string.lower(SprinklerSearchBox.Text)
+        SprinklerList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        for _, sprinkler in ipairs(SprinklerTypes) do
+            if searchTerm == "" or string.find(string.lower(sprinkler), searchTerm) then
+                local btn = CreateSprinklerButton(sprinkler, yPosition)
+                btn.Parent = SprinklerList
+                yPosition = yPosition + rowHeight
+            end
+        end
+        
+        SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end)
+
+    -- FIXED: Added search handler for fruits
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        SearchFruits(SearchBox.Text)
+    end)
+
+    -- Search handler for plant destruction
+    PlantsSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        SearchPlantsForDestruction(PlantsSearchBox.Text)
+    end)
+
+    -- Populate Rarity List
+    for _, rarity in ipairs(RarityOrder) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 20)
+        btn.BackgroundColor3 = RarityColors[rarity]
+        btn.BackgroundTransparency = 0.3
+        btn.Text = rarity
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 12
+        btn.Parent = RarityList
+        
+        local padding = Instance.new("UIPadding", btn)
+        padding.PaddingLeft = UDim.new(0, 5)
+    end
+
+    -- Rarity selection handler (UPDATED to handle both columns)
+    for _, btn in ipairs(RarityList:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.MouseButton1Click:Connect(function()
+                for _, otherBtn in ipairs(RarityList:GetChildren()) do
+                    if otherBtn:IsA("TextButton") then
+                        otherBtn.BackgroundTransparency = 0.3
+                    end
+                end
+                
+                btn.BackgroundTransparency = 0.1
+                -- Update both columns
+                ShowPlantsByRarityForDestruction(btn.Text)
+                ShowFruitsByRarity(btn.Text)
+            end)
+        end
+    end
+
+    -- Shovel Fruits Toggle
+    ShovelFruitsToggle.MouseButton1Click:Connect(function()
+        AutoShovel = not AutoShovel
+        
+        if AutoShovel then
+            ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+            ShovelFruitsToggle.Text = "ON"
+            showNotification("Auto Shovel: ON")
+            StartAutoShovel()
+        else
+            ShovelFruitsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+            ShovelFruitsToggle.Text = "OFF"
+            showNotification("Auto Shovel: OFF")
+            -- Immediately stop shovel thread
+            if ShovelThread then
+                task.cancel(ShovelThread)
+                ShovelThread = nil
+            end
+        end
+    end)
+
+    -- Shovel Sprinkler Toggle
+    ShovelSprinklerToggle.MouseButton1Click:Connect(function()
+        AutoShovelSprinklers = not AutoShovelSprinklers
+        
+        if AutoShovelSprinklers then
+            ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+            ShovelSprinklerToggle.Text = "ON"
+            showNotification("Auto Shovel Sprinklers: ON")
+            StartAutoShovelSprinklers()
+        else
+            ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+            ShovelSprinklerToggle.Text = "OFF"
+            showNotification("Auto Shovel Sprinklers: OFF")
+            -- Immediately stop shovel sprinkler thread
+            if ShovelSprinklerThread then
+                task.cancel(ShovelSprinklerThread)
+                ShovelSprinklerThread = nil
+            end
+        end
+    end)
+
+    -- Destroy Plants Toggle
+    DestroyPlantsToggle.MouseButton1Click:Connect(function()
+        AutoDestroyPlants = not AutoDestroyPlants
+        
+        if AutoDestroyPlants then
+            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+            DestroyPlantsToggle.Text = "ON"
+            showNotification("Auto Destroy Plants: ON")
+            StartAutoDestroyPlants()
+        else
+            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 80)
+            DestroyPlantsToggle.Text = "OFF"
+            showNotification("Auto Destroy Plants: OFF")
+            -- Immediately stop destroy plants thread
+            if DestroyPlantsThread then
+                task.cancel(DestroyPlantsThread)
+                DestroyPlantsThread = nil
+            end
+        end
+    end)
+
+    -- Threshold box handler
+    ThresholdBox.FocusLost:Connect(function()
+        local threshold = tonumber(ThresholdBox.Text)
+        if threshold and threshold >= 0 then
+            ShovelWeightThreshold = threshold
+            ThresholdBox.Text = tostring(threshold)
+            showNotification("Min weight set to: " .. threshold)
+        else
+            ThresholdBox.Text = tostring(ShovelWeightThreshold)
+        end
+    end)
+
+    -- FIXED: Added threshold handler for destruction
+    DestroyThresholdBox.FocusLost:Connect(function()
+        local threshold = tonumber(DestroyThresholdBox.Text)
+        if threshold and threshold >= 0 then
+            DestructionThreshold = threshold
+            DestroyThresholdBox.Text = tostring(threshold)
+            showNotification("Destruction threshold set to: " .. threshold)
+        else
+            DestroyThresholdBox.Text = tostring(DestructionThreshold)
+        end
+    end)
+
+    -- Delay box handler
+    DelayBox.FocusLost:Connect(function()
+        local delay = tonumber(DelayBox.Text)
+        if delay and delay >= 0 then
+            ShovelDelay = delay
+            DelayBox.Text = tostring(delay)
+            showNotification("Delay set to: " .. delay .. " seconds")
+            if AutoShovelSprinklers then
+                StartAutoShovelSprinklers()
+            end
+        else
+            DelayBox.Text = tostring(ShovelDelay)
+        end
+    end)
+
+    -- Toggle UI Visibility
+    local uiVisible = false
+    local firstTimeOpen = true
+
+    ToggleBtn.MouseButton1Click:Connect(function()
+        uiVisible = not uiVisible
+        MainFrame.Visible = uiVisible
+        
+        glow.Visible = true
+        local pulse = TweenService:Create(
+            glow,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, 0, true),
+            {ImageTransparency = 0.5}
+        )
+        pulse:Play()
+        
+        local rotationTween = TweenService:Create(
+            ToggleBtn,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quint),
+            {Rotation = uiVisible and 0 or 180}
+        )
+        rotationTween:Play()
+        
+        task.delay(0.6, function()
+            glow.Visible = false
+        end)
+        
+        if uiVisible and firstTimeOpen then
+            firstTimeOpen = false
+            
+            local count = 10
+            local notification, label = showCountdownNotification(count)
+            
+            task.spawn(function()
+                while count > 0 and uiVisible do
+                    task.wait(1)
+                    count = count - 1
+                    if count > 0 then
+                        label.Text = "Loading plant data... " .. count .. " seconds remaining"
+                    else
+                        label.Text = "Plant data loaded!"
+                    end
+                end
+                
+                task.wait(2)
+                
+                local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+                local textFadeOut = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 1})
+                fadeOut:Play()
+                textFadeOut:Play()
+                
+                fadeOut.Completed:Wait()
+                notification:Destroy()
+            end)
+        end
+    end)
+
+    -- Initialize
+    ShowAllFruits()
+    ShowAllPlantsForDestruction()
+    PopulateSprinklerList()
+    showNotification("Punk Team Infinite Script Loaded!")
 
 end, errorHandler)
 
 if not success then
-    warn("[PunkTeamInfinite] Script failed to run: " .. tostring(errorMsg))
+    warn("[PunkTeamInfinite CRITICAL ERROR] Script failed to initialize: " .. tostring(errorMsg))
 end
