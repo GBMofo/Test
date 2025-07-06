@@ -472,6 +472,16 @@ local function DestroyPlants()
     return false
 end
 
+    
+    if destroyedCount > 0 then
+        showNotification("Destroyed " .. destroyedCount .. " plants")
+        return true
+    end
+    
+    return false
+end
+
+
 
     local DestroyPlantsThread
     local function StartAutoDestroyPlants()
