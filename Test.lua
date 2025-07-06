@@ -8,7 +8,7 @@ local RemoveItem = GameEvents:WaitForChild("Remove_Item")
 
 local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
 
-local DestructionThreshold = 100 -- Weight threshold for destruction
+local DestructionThreshold = 100
 
 local Whitelisted_PlantsForDestruction = {
     ["Tomato"] = true,
@@ -16,11 +16,11 @@ local Whitelisted_PlantsForDestruction = {
     ["Carrot"] = true,
 }
 
-local function EquipAndActivateShovel()
+local function EquipShovel()
     local character = localPlayer.Character
-    if not character then 
+    if not character then
         warn("Character not found")
-        return false 
+        return false
     end
 
     local tool = character:FindFirstChild("Shovel [Destroy Plants]")
@@ -39,8 +39,8 @@ local function EquipAndActivateShovel()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if humanoid and tool:IsA("Tool") then
         humanoid:EquipTool(tool)
-        task.wait(0.1) -- small wait to ensure equip
-        tool:Activate() -- simulate tool activation
+        task.wait(0.1)
+        tool:Activate()
         print("Shovel equipped and activated")
         return true
     else
@@ -55,10 +55,8 @@ local function hasFruitBelowThreshold(parent, threshold)
             local fruitModel = child.Parent
             if fruitModel and fruitModel:IsA("Model") then
                 local weightValue = fruitModel:FindFirstChild("Weight")
-                if weightValue and weightValue:IsA("NumberValue") then
-                    if weightValue.Value < threshold then
-                        return true
-                    end
+                if weightValue and weightValue:IsA("NumberValue") and weightValue.Value < threshold then
+                    return true
                 end
             end
         elseif child:IsA("Model") or child:IsA("Folder") then
@@ -75,7 +73,8 @@ local function FireActivationEvents(plantCFrame)
     local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
     local inputGateway2 = player.Character and player.Character:FindFirstChild("InputGateway") and player.Character.InputGateway:FindFirstChild("Activation")
 
-    -- Fire false activation twice with delay
+    print("Firing Activation events at CFrame:", plantCFrame)
+
     inputGateway1:FireServer(false, plantCFrame)
     task.wait(0.1)
     inputGateway1:FireServer(false, plantCFrame)
@@ -87,7 +86,6 @@ local function FireActivationEvents(plantCFrame)
         task.wait(0.1)
     end
 
-    -- Fire true activation twice with delay
     inputGateway1:FireServer(true, plantCFrame)
     task.wait(0.1)
     inputGateway1:FireServer(true, plantCFrame)
@@ -101,43 +99,38 @@ local function FireActivationEvents(plantCFrame)
 end
 
 local function DestroyPlants()
-    if not EquipAndActivateShovel() then
-        warn("Failed to equip and activate shovel!")
+    if not EquipShovel() then
+        warn("Failed to equip shovel")
         return false
     end
 
     local farm = GetFarm(localPlayer)
     if not farm then
-        warn("Farm not found!")
+        warn("Farm not found")
         return false
     end
 
     local important = farm:FindFirstChild("Important")
     if not important then
-        warn("Important folder not found!")
+        warn("Important folder not found")
         return false
     end
 
     local plantsPhysical = important:FindFirstChild("Plants_Physical")
     if not plantsPhysical then
-        warn("Plants_Physical not found!")
+        warn("Plants_Physical not found")
         return false
     end
 
-    local destroyedCount = 0
     local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-    print("Checking plants for destruction... Total plants:", #plantsPhysical:GetChildren())
+    local destroyedCount = 0
 
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
         print("Checking plant:", plant.Name)
         if Whitelisted_PlantsForDestruction[plant.Name] then
             local fruitsFolder = plant:FindFirstChild("Fruits")
-            local shouldDestroy = false
-            if fruitsFolder then
-                shouldDestroy = hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
-                print("Has fruit below threshold:", shouldDestroy)
-            end
+            local shouldDestroy = fruitsFolder and hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
+            print("Has fruit below threshold:", shouldDestroy)
 
             if shouldDestroy then
                 if not plant.PrimaryPart then
@@ -150,16 +143,18 @@ local function DestroyPlants()
                 if hrp then
                     hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 3)
                     task.wait(0.3)
+                    print("Teleported near plant:", plant.Name)
                 end
 
                 FireActivationEvents(plant.PrimaryPart.CFrame)
                 task.wait(0.3)
 
+                print("Firing DeleteObject and RemoveItem for:", plant.Name)
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
 
                 destroyedCount = destroyedCount + 1
-                task.wait(0.5) -- increased delay to avoid server spam
+                task.wait(0.7) -- increased delay to reduce server rejection
             end
         else
             print("Plant not whitelisted:", plant.Name)
