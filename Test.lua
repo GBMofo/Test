@@ -40,7 +40,7 @@ local function GetFarm(playerName)
     return nil
 end
 
-local function DestroyTomatoPlants()
+local function DestroyCornPlants()
     if not EquipShovel() then
         warn("Could not equip shovel!")
         return
@@ -64,13 +64,13 @@ local function DestroyTomatoPlants()
 
     local destroyed = 0
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
-        if plant.Name == "Tomato" and plant:IsA("Model") then
+        if plant.Name == "Corn" and plant:IsA("Model") then
             plant:SetAttribute("AB_FTUEShovel", true)
             destroyed = destroyed + 1
             task.wait(0.1)
         end
     end
-    print("Destroyed "..destroyed.." Tomato plants.")
+    print("Destroyed "..destroyed.." Corn plants.")
 end
 
-DestroyTomatoPlants()
+DestroyCornPlants()
