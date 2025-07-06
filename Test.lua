@@ -68,34 +68,22 @@ local function hasFruitBelowThreshold(parent, threshold)
     return false
 end
 
-local function FireActivationEvents(plantCFrame)
+local function ClickPlant(plantCFrame)
     local player = Players.LocalPlayer
     local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
     local inputGateway2 = player.Character and player.Character:FindFirstChild("InputGateway") and player.Character.InputGateway:FindFirstChild("Activation")
 
-    print("Firing Activation events at CFrame:", plantCFrame)
+    print("Clicking plant at CFrame:", plantCFrame)
 
-    inputGateway1:FireServer(false, plantCFrame)
+    -- Mouse button down (click start)
+    inputGateway1:FireServer(true, plantCFrame)
+    if inputGateway2 then inputGateway2:FireServer(true, plantCFrame) end
     task.wait(0.1)
-    inputGateway1:FireServer(false, plantCFrame)
-    task.wait(0.1)
-    if inputGateway2 then
-        inputGateway2:FireServer(false, plantCFrame)
-        task.wait(0.1)
-        inputGateway2:FireServer(false, plantCFrame)
-        task.wait(0.1)
-    end
 
-    inputGateway1:FireServer(true, plantCFrame)
-    task.wait(0.1)
-    inputGateway1:FireServer(true, plantCFrame)
-    task.wait(0.1)
-    if inputGateway2 then
-        inputGateway2:FireServer(true, plantCFrame)
-        task.wait(0.1)
-        inputGateway2:FireServer(true, plantCFrame)
-        task.wait(0.1)
-    end
+    -- Mouse button up (click end)
+    inputGateway1:FireServer(false, plantCFrame)
+    if inputGateway2 then inputGateway2:FireServer(false, plantCFrame) end
+    task.wait(0.2)
 end
 
 local function DestroyPlants()
@@ -141,20 +129,22 @@ local function DestroyPlants()
                 print("Destroying plant:", plant.Name)
 
                 if hrp then
-                    hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 3)
+                    -- Teleport very close to the plant to simulate clicking
+                    hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 0.5)
                     task.wait(0.3)
                     print("Teleported near plant:", plant.Name)
                 end
 
-                FireActivationEvents(plant.PrimaryPart.CFrame)
+                -- Simulate clicking on the plant part
+                ClickPlant(plant.PrimaryPart.CFrame)
                 task.wait(0.3)
 
-                print("Firing DeleteObject and RemoveItem for:", plant.Name)
+                -- Fire deletion/removal events after clicking
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
 
                 destroyedCount = destroyedCount + 1
-                task.wait(0.7) -- increased delay to reduce server rejection
+                task.wait(0.5)
             end
         else
             print("Plant not whitelisted:", plant.Name)
