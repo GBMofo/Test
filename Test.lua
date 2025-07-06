@@ -403,8 +403,8 @@ local success, errorMsg = xpcall(function()
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 280, 0, 280)  -- Reduced width from 300 to 280
-    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)  -- Centered position adjusted
+    MainFrame.Size = UDim2.new(0, 280, 0, 280)
+    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 0
@@ -501,10 +501,10 @@ local success, errorMsg = xpcall(function()
     RarityLayout.Padding = UDim.new(0, 2)
     RarityLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    -- Fruits Column (previously Plants)
+    -- Fruits Column
     local FruitsFrame = Instance.new("Frame", MainFrame)
-    FruitsFrame.Size = UDim2.new(0, 110, 0, 230)  -- Increased width from 100 to 110
-    FruitsFrame.Position = UDim2.new(0, 60, 0, 22)  -- Position adjusted
+    FruitsFrame.Size = UDim2.new(0, 110, 0, 230)
+    FruitsFrame.Position = UDim2.new(0, 60, 0, 22)
     FruitsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     FruitsFrame.BackgroundTransparency = 0.3
     FruitsFrame.BorderSizePixel = 0
@@ -516,7 +516,7 @@ local success, errorMsg = xpcall(function()
     FruitsLabel.Size = UDim2.new(1, 0, 0, 16)
     FruitsLabel.Position = UDim2.new(0, 0, 0, 0)
     FruitsLabel.BackgroundTransparency = 1
-    FruitsLabel.Text = "FRUITS"  -- Changed from PLANTS
+    FruitsLabel.Text = "FRUITS"
     FruitsLabel.TextColor3 = Color3.new(1, 1, 1)
     FruitsLabel.Font = Enum.Font.SourceSansBold
     FruitsLabel.TextSize = 12
@@ -526,14 +526,14 @@ local success, errorMsg = xpcall(function()
     SearchBox.Position = UDim2.new(0, 5, 0, 16)
     SearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     SearchBox.TextColor3 = Color3.new(1, 1, 1)
-    SearchBox.PlaceholderText = "Search fruits..."  -- Changed from plants
+    SearchBox.PlaceholderText = "Search fruits..."
     SearchBox.Font = Enum.Font.SourceSans
     SearchBox.TextSize = 14
     SearchBox.ClearTextOnFocus = false
 
     -- Fruits List Container
     local FruitsListContainer = Instance.new("Frame", FruitsFrame)
-    FruitsListContainer.Size = UDim2.new(1, 0, 0, 126)
+    FruitsListContainer.Size = UDim2.new(1, 0, 0, 130)  -- Increased height
     FruitsListContainer.Position = UDim2.new(0, 0, 0, 36)
     FruitsListContainer.BackgroundTransparency = 1
     FruitsListContainer.Name = "FruitsListContainer"
@@ -545,10 +545,10 @@ local success, errorMsg = xpcall(function()
     FruitsList.ScrollBarThickness = 4
     FruitsList.Parent = FruitsListContainer
 
-    -- Shovel Fruits Section (previously Shovel Plants)
+    -- Shovel Fruits Section
     local ShovelFruitsFrame = Instance.new("Frame", FruitsFrame)
-    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 63)
-    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 167)
+    ShovelFruitsFrame.Size = UDim2.new(1, 0, 0, 64)  -- Increased height
+    ShovelFruitsFrame.Position = UDim2.new(0, 0, 0, 166)  -- Adjusted position (36+130=166)
     ShovelFruitsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelFruitsFrame.BackgroundTransparency = 0.5
     ShovelFruitsFrame.BorderSizePixel = 0
@@ -561,7 +561,7 @@ local success, errorMsg = xpcall(function()
     ShovelFruitsLabel.Size = UDim2.new(1, 0, 0.3, 0)
     ShovelFruitsLabel.Position = UDim2.new(0, 0, 0, 0)
     ShovelFruitsLabel.BackgroundTransparency = 1
-    ShovelFruitsLabel.Text = "SHOVEL FRUITS"  -- Changed from SHOVEL PLANTS
+    ShovelFruitsLabel.Text = "SHOVEL FRUITS"
     ShovelFruitsLabel.TextColor3 = Color3.new(1, 1, 1)
     ShovelFruitsLabel.Font = Enum.Font.SourceSansBold
     ShovelFruitsLabel.TextSize = 12
@@ -596,8 +596,8 @@ local success, errorMsg = xpcall(function()
 
     -- SPRINKLER Column
     local SettingsFrame = Instance.new("Frame", MainFrame)
-    SettingsFrame.Size = UDim2.new(0, 110, 0, 230)  -- Increased width from 100 to 110
-    SettingsFrame.Position = UDim2.new(0, 170, 0, 22)  -- Position adjusted (60 + 110 = 170)
+    SettingsFrame.Size = UDim2.new(0, 110, 0, 230)
+    SettingsFrame.Position = UDim2.new(0, 170, 0, 22)
     SettingsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     SettingsFrame.BackgroundTransparency = 0.3
     SettingsFrame.BorderSizePixel = 0
@@ -626,7 +626,7 @@ local success, errorMsg = xpcall(function()
 
     -- Sprinkler List
     local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
-    SprinklerList.Size = UDim2.new(1, 0, 0, 126)
+    SprinklerList.Size = UDim2.new(1, 0, 0, 130)  -- Increased height
     SprinklerList.Position = UDim2.new(0, 0, 0, 36)
     SprinklerList.BackgroundTransparency = 1
     SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -634,8 +634,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Sprinkler Section
     local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
-    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 63)
-    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 167)
+    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 64)  -- Increased height
+    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 166)  -- Adjusted position (36+130=166)
     ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelSprinklerFrame.BackgroundTransparency = 0.5
     ShovelSprinklerFrame.BorderSizePixel = 0
