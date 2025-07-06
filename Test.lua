@@ -70,7 +70,6 @@ local success, errorMsg = xpcall(function()
     local ProximityPromptController
     local function GetProximityPromptController()
         if not ProximityPromptController then
-            -- Try to find the controller in the game environment
             for _, module in pairs(getloadedmodules()) do
                 if module.Name == "ProximityPromptController" then
                     ProximityPromptController = require(module)
@@ -78,7 +77,6 @@ local success, errorMsg = xpcall(function()
                 end
             end
             
-            -- If not found, create a mock controller
             if not ProximityPromptController then
                 ProximityPromptController = {
                     AddDisabler = function() end,
@@ -89,31 +87,20 @@ local success, errorMsg = xpcall(function()
         return ProximityPromptController
     end
 
-    -- Notification System with safe GUI creation
+    -- Notification System
     local function showNotification(message)
-        -- Throttle notifications to prevent spam
         if os.clock() - LastNotificationTime < 1 then return end
         LastNotificationTime = os.clock()
         
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then
-            warn("PlayerGui not found!")
-            return
-        end
+        if not playerGui then return end
         
-        local screenGui = playerGui:FindFirstChild("PunkTeamInfinite")
-        if not screenGui then
-            -- Create ScreenGui if it doesn't exist
-            screenGui = Instance.new("ScreenGui")
-            screenGui.Name = "PunkTeamInfinite"
-            screenGui.Parent = playerGui
-        end
+        local screenGui = playerGui:FindFirstChild("PunkTeamInfinite") or Instance.new("ScreenGui")
+        screenGui.Name = "PunkTeamInfinite"
+        screenGui.Parent = playerGui
         
-        -- Remove any existing notification
         for _, obj in ipairs(screenGui:GetChildren()) do
-            if obj.Name == "Notification" then
-                obj:Destroy()
-            end
+            if obj.Name == "Notification" then obj:Destroy() end
         end
         
         local notification = Instance.new("Frame")
@@ -146,82 +133,51 @@ local success, errorMsg = xpcall(function()
         notification.BackgroundTransparency = 1
         label.TextTransparency = 1
         
-        local fadeIn = TweenService:Create(
-            notification,
-            TweenInfo.new(0.5),
-            {BackgroundTransparency = 0.3}
-        )
-        
-        local textFadeIn = TweenService:Create(
-            label,
-            TweenInfo.new(0.5),
-            {TextTransparency = 0}
-        )
-        
+        local fadeIn = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 0.3})
+        local textFadeIn = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 0})
         fadeIn:Play()
         textFadeIn:Play()
         
-        wait(3)
-        
-        local fadeOut = TweenService:Create(
-            notification,
-            TweenInfo.new(0.5),
-            {BackgroundTransparency = 1}
-        )
-        
-        local textFadeOut = TweenService:Create(
-            label,
-            TweenInfo.new(0.5),
-            {TextTransparency = 1}
-        )
-        
-        fadeOut:Play()
-        textFadeOut:Play()
-        
-        fadeOut.Completed:Wait()
-        notification:Destroy()
+        task.delay(3, function()
+            local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+            local textFadeOut = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 1})
+            fadeOut:Play()
+            textFadeOut:Play()
+            fadeOut.Completed:Wait()
+            notification:Destroy()
+        end)
     end
 
-    -- Enhanced Countdown Notification System
+    -- Enhanced Countdown Notification
     local function showCountdownNotification(count)
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then return nil, nil end
         
-        local screenGui = playerGui:FindFirstChild("PunkTeamInfinite")
-        if not screenGui then
-            screenGui = Instance.new("ScreenGui")
-            screenGui.Name = "PunkTeamInfinite"
-            screenGui.Parent = playerGui
-        end
+        local screenGui = playerGui:FindFirstChild("PunkTeamInfinite") or Instance.new("ScreenGui")
+        screenGui.Name = "PunkTeamInfinite"
+        screenGui.Parent = playerGui
         
-        -- Remove any existing countdown notification
         for _, obj in ipairs(screenGui:GetChildren()) do
-            if obj.Name == "CountdownNotification" then
-                obj:Destroy()
-            end
+            if obj.Name == "CountdownNotification" then obj:Destroy() end
         end
         
-        -- Create larger notification frame
         local notification = Instance.new("Frame")
         notification.Name = "CountdownNotification"
-        notification.Size = UDim2.new(0, 400, 0, 80)  -- Bigger size
-        notification.Position = UDim2.new(0.5, -200, 0.5, -40)  -- Centered
+        notification.Size = UDim2.new(0, 400, 0, 80)
+        notification.Position = UDim2.new(0.5, -200, 0.5, -40)
         notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         notification.BackgroundTransparency = 0.3
         notification.BorderSizePixel = 0
         notification.ZIndex = 100
         notification.Parent = screenGui
         
-        -- Rounded corners
         local corner = Instance.new("UICorner", notification)
-        corner.CornerRadius = UDim.new(0, 12)  -- Larger radius
+        corner.CornerRadius = UDim.new(0, 12)
         
-        -- Red border stroke
         local stroke = Instance.new("UIStroke", notification)
         stroke.Color = Color3.fromRGB(255, 50, 50)
-        stroke.Thickness = 3  -- Thicker border
+        stroke.Thickness = 3
         
-        -- Text label inside notification (bigger text)
         local label = Instance.new("TextLabel", notification)
         label.Size = UDim2.new(1, -20, 1, -20)
         label.Position = UDim2.new(0, 10, 0, 10)
@@ -229,15 +185,13 @@ local success, errorMsg = xpcall(function()
         label.Text = "Loading plant data...\n" .. count .. " seconds remaining"
         label.TextColor3 = Color3.new(1, 1, 1)
         label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 24  -- Larger text size
+        label.TextSize = 24
         label.TextWrapped = true
         label.TextYAlignment = Enum.TextYAlignment.Center
         
-        -- Start fully transparent for fade-in effect
         notification.BackgroundTransparency = 1
         label.TextTransparency = 1
         
-        -- Tween to fade in background and text
         local fadeIn = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 0.3})
         local textFadeIn = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 0})
         fadeIn:Play()
@@ -246,16 +200,9 @@ local success, errorMsg = xpcall(function()
         return notification, label
     end
 
-    -- Farm Functions with error handling
+    -- Farm Functions
     local function GetFarmOwner(Farm)
-        if not Farm then return nil end
-        local Important = Farm:FindFirstChild("Important")
-        if not Important then return nil end
-        local Data = Important:FindFirstChild("Data")
-        if not Data then return nil end
-        local Owner = Data:FindFirstChild("Owner")
-        if not Owner then return nil end
-        return Owner.Value
+        return Farm and Farm:FindFirstChild("Important") and Farm.Important:FindFirstChild("Data") and Farm.Important.Data:FindFirstChild("Owner") and Farm.Important.Data.Owner.Value
     end
 
     local function GetFarm(PlayerName)
@@ -264,10 +211,8 @@ local success, errorMsg = xpcall(function()
             return nil
         end
         
-        local farmChildren = Farms:GetChildren()
-        for _, Farm in next, farmChildren do
-            local Owner = GetFarmOwner(Farm)
-            if Owner == PlayerName then
+        for _, Farm in next, Farms:GetChildren() do
+            if GetFarmOwner(Farm) == PlayerName then
                 return Farm
             end
         end
@@ -277,43 +222,32 @@ local success, errorMsg = xpcall(function()
     local MyFarm = GetFarm(LocalPlayer.Name)
     local PlantsPhysical = MyFarm and MyFarm.Important and MyFarm.Important:FindFirstChild("Plants_Physical")
 
-    -- SHOVEL PLANTS FUNCTIONALITY with safe remote calls
+    -- SHOVEL PLANTS FUNCTIONALITY
     local function EquipShovel()
         local character = LocalPlayer.Character
-        if not character then
-            warn("Character not found!")
-            return false
-        end
+        if not character then return false end
         
         local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if not backpack then
-            warn("Backpack not found!")
-            return false
-        end
+        if not backpack then return false end
         
-        -- Find shovel in character or backpack
         local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
         if not shovelTool then
             showNotification("Shovel not found in inventory!")
             return false
         end
         
-        -- Move to character if in backpack
         if shovelTool.Parent == backpack then
             shovelTool.Parent = character
         end
         
-        -- Equip the shovel
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid then
             humanoid:EquipTool(shovelTool)
             return true
         end
-        
         return false
     end
 
-    -- Function to remove fruits below weight threshold with safe remote calls
     local function RemoveFruitsRecursively(parent, threshold)
         for _, child in ipairs(parent:GetChildren()) do
             if child:IsA("BasePart") then
@@ -322,15 +256,12 @@ local success, errorMsg = xpcall(function()
                 local weight = (weightValue and weightValue:IsA("NumberValue")) and weightValue.Value or math.huge
 
                 if weight < threshold then
-                    -- Safe remote call
                     pcall(function()
                         if GameEvents:FindFirstChild("Remove_Item") then
                             GameEvents.Remove_Item:FireServer(child)
-                        else
-                            warn("Remove_Item remote event not found!")
                         end
                     end)
-                    task.wait(0.1)  -- Small delay between removals
+                    task.wait(0.1)
                 end
             elseif child:IsA("Model") or child:IsA("Folder") then
                 RemoveFruitsRecursively(child, threshold)
@@ -338,48 +269,61 @@ local success, errorMsg = xpcall(function()
         end
     end
 
-    -- Main shovel function with error handling
     local function ShovelPlants()
-        -- Get player's farm
         local farm = GetFarm(LocalPlayer.Name)
         if not farm then
             showNotification("Farm not found!")
-            return
+            return false
         end
         
         local important = farm:FindFirstChild("Important")
         if not important then
             showNotification("Important folder not found!")
-            return
+            return false
         end
         
         local plantsPhysical = important:FindFirstChild("Plants_Physical")
         if not plantsPhysical then
             showNotification("Plants_Physical not found!")
-            return
+            return false
         end
         
-        -- Equip shovel first
-        if not pcall(EquipShovel) then
+        -- Equip shovel with retry logic
+        local equipped = false
+        for i = 1, 3 do
+            if pcall(EquipShovel) then
+                equipped = true
+                break
+            end
+            task.wait(0.5)
+        end
+        
+        if not equipped then
             showNotification("Failed to equip shovel!")
-            return
+            return false
         end
         
-        -- Process all whitelisted plants
+        local shoveledSomething = false
+        
         for plantName in pairs(Whitelisted_Plants) do
             local plant = plantsPhysical:FindFirstChild(plantName)
             if plant then
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
+                    local fruitCount = #fruitsFolder:GetChildren()
                     pcall(RemoveFruitsRecursively, fruitsFolder, ShovelWeightThreshold)
-                else
-                    warn("Fruits folder not found for plant: " .. plantName)
+                    
+                    if fruitCount > 0 and #fruitsFolder:GetChildren() < fruitCount then
+                        shoveledSomething = true
+                    end
                 end
             end
         end
+        
+        return shoveledSomething
     end
 
-    -- Start/stop auto shovel with error handling
+    -- Improved Auto-Shovel Loop
     local ShovelThread
     local function StartAutoShovel()
         if ShovelThread then
@@ -390,23 +334,26 @@ local success, errorMsg = xpcall(function()
         if AutoShovel then
             ShovelThread = task.spawn(function()
                 while AutoShovel do
-                    pcall(ShovelPlants)
-                    task.wait(5)  -- Use a fixed interval for shovel plants
+                    local success, shoveled = pcall(ShovelPlants)
+                    
+                    if not success or not shoveled then
+                        task.wait(1)
+                    else
+                        task.wait(0.1)
+                    end
                 end
             end)
         end
     end
 
-    -- SHOVEL SPRINKLER FUNCTIONALITY with safe remote calls
+    -- SHOVEL SPRINKLER FUNCTIONALITY
     local function RemoveSprinklers()
-        -- Get player's farm
         local farm = GetFarm(LocalPlayer.Name)
         if not farm then
             showNotification("Farm not found!")
             return
         end
         
-        -- Equip shovel first
         if not pcall(EquipShovel) then
             showNotification("Failed to equip shovel!")
             return
@@ -414,19 +361,15 @@ local success, errorMsg = xpcall(function()
         
         local removedCount = 0
         
-        -- Search for sprinklers in the farm
         for _, obj in ipairs(farm:GetDescendants()) do
             if obj:IsA("Model") and Whitelisted_Sprinklers[obj.Name] then
-                -- Safe remote call
                 pcall(function()
                     if GameEvents:FindFirstChild("DeleteObject") then
                         GameEvents.DeleteObject:FireServer(obj)
                         removedCount = removedCount + 1
-                    else
-                        warn("DeleteObject remote event not found!")
                     end
                 end)
-                task.wait(0.1)  -- Small delay between removals
+                task.wait(0.1)
             end
         end
         
@@ -435,7 +378,6 @@ local success, errorMsg = xpcall(function()
         end
     end
 
-    -- Start/stop auto shovel sprinklers with error handling
     local ShovelSprinklerThread
     local function StartAutoShovelSprinklers()
         if ShovelSprinklerThread then
@@ -453,21 +395,20 @@ local success, errorMsg = xpcall(function()
         end
     end
 
-    -- UI Creation with error handling
+    -- UI Creation
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "PunkTeamInfinite"
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    -- Smaller UI size as requested
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 300, 0, 280)  -- Smaller size
+    MainFrame.Size = UDim2.new(0, 300, 0, 280)
     MainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 0
     MainFrame.Active = true
     MainFrame.Draggable = true
-    MainFrame.Visible = false  -- Start hidden
+    MainFrame.Visible = false
     MainFrame.Parent = ScreenGui
 
     local UICorner = Instance.new("UICorner", MainFrame)
@@ -529,7 +470,7 @@ local success, errorMsg = xpcall(function()
 
     -- Rarity Column
     local RarityFrame = Instance.new("Frame", MainFrame)
-    RarityFrame.Size = UDim2.new(0, 60, 0, 230)  -- Adjusted size
+    RarityFrame.Size = UDim2.new(0, 60, 0, 230)
     RarityFrame.Position = UDim2.new(0, 0, 0, 22)
     RarityFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     RarityFrame.BackgroundTransparency = 0.3
@@ -560,7 +501,7 @@ local success, errorMsg = xpcall(function()
 
     -- Plants Column
     local PlantsFrame = Instance.new("Frame", MainFrame)
-    PlantsFrame.Size = UDim2.new(0, 100, 0, 230)  -- Adjusted size
+    PlantsFrame.Size = UDim2.new(0, 100, 0, 230)
     PlantsFrame.Position = UDim2.new(0, 60, 0, 22)
     PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     PlantsFrame.BackgroundTransparency = 0.3
@@ -588,9 +529,9 @@ local success, errorMsg = xpcall(function()
     SearchBox.TextSize = 14
     SearchBox.ClearTextOnFocus = false
 
-    -- Plants List Container (top half)
+    -- Plants List Container
     local PlantsListContainer = Instance.new("Frame", PlantsFrame)
-    PlantsListContainer.Size = UDim2.new(1, 0, 0, 126)  -- Fixed height to prevent overlap
+    PlantsListContainer.Size = UDim2.new(1, 0, 0, 126)
     PlantsListContainer.Position = UDim2.new(0, 0, 0, 36)
     PlantsListContainer.BackgroundTransparency = 1
     PlantsListContainer.Name = "PlantsListContainer"
@@ -602,10 +543,10 @@ local success, errorMsg = xpcall(function()
     PlantsList.ScrollBarThickness = 4
     PlantsList.Parent = PlantsListContainer
 
-    -- Shovel Plants Section (bottom half)
+    -- Shovel Plants Section
     local ShovelPlantsFrame = Instance.new("Frame", PlantsFrame)
-    ShovelPlantsFrame.Size = UDim2.new(1, 0, 0, 63)  -- Fixed height to prevent overlap
-    ShovelPlantsFrame.Position = UDim2.new(0, 0, 0, 167)  -- Positioned below plant list
+    ShovelPlantsFrame.Size = UDim2.new(1, 0, 0, 63)
+    ShovelPlantsFrame.Position = UDim2.new(0, 0, 0, 167)
     ShovelPlantsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelPlantsFrame.BackgroundTransparency = 0.5
     ShovelPlantsFrame.BorderSizePixel = 0
@@ -618,13 +559,13 @@ local success, errorMsg = xpcall(function()
     ShovelPlantsLabel.Size = UDim2.new(1, 0, 0.3, 0)
     ShovelPlantsLabel.Position = UDim2.new(0, 0, 0, 0)
     ShovelPlantsLabel.BackgroundTransparency = 1
-    ShovelPlantsLabel.Text = "SHOVEL PLANTS"
+    ShovelPlantsLabel.Text = "SHOVEL FRUITS"
     ShovelPlantsLabel.TextColor3 = Color3.new(1, 1, 1)
     ShovelPlantsLabel.Font = Enum.Font.SourceSansBold
     ShovelPlantsLabel.TextSize = 12
 
     local ShovelPlantsToggle = Instance.new("TextButton", ShovelPlantsFrame)
-    ShovelPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+    ShovelPlantsToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
     ShovelPlantsToggle.Position = UDim2.new(0, 5, 0.3, 5)
     ShovelPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
     ShovelPlantsToggle.Text = "OFF"
@@ -633,7 +574,7 @@ local success, errorMsg = xpcall(function()
     ShovelPlantsToggle.TextSize = 12
 
     local ThresholdLabel = Instance.new("TextLabel", ShovelPlantsFrame)
-    ThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+    ThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
     ThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
     ThresholdLabel.BackgroundTransparency = 1
     ThresholdLabel.Text = "Min/kg:"
@@ -643,17 +584,17 @@ local success, errorMsg = xpcall(function()
     ThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local ThresholdBox = Instance.new("TextBox", ShovelPlantsFrame)
-    ThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)  -- Smaller size
+    ThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)
     ThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
     ThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    ThresholdBox.Text = "200"  -- Default threshold
+    ThresholdBox.Text = "200"
     ThresholdBox.TextColor3 = Color3.new(1, 1, 1)
     ThresholdBox.Font = Enum.Font.SourceSansBold
     ThresholdBox.TextSize = 12
 
-    -- Settings Column (renamed to SPRINKLER)
+    -- SPRINKLER Column
     local SettingsFrame = Instance.new("Frame", MainFrame)
-    SettingsFrame.Size = UDim2.new(0, 100, 0, 230)  -- Adjusted size
+    SettingsFrame.Size = UDim2.new(0, 100, 0, 230)
     SettingsFrame.Position = UDim2.new(0, 160, 0, 22)
     SettingsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     SettingsFrame.BackgroundTransparency = 0.3
@@ -662,17 +603,15 @@ local success, errorMsg = xpcall(function()
     local SettingsCorner = Instance.new("UICorner", SettingsFrame)
     SettingsCorner.CornerRadius = UDim.new(0, 6)
 
-    -- Renamed label
     local SettingsLabel = Instance.new("TextLabel", SettingsFrame)
     SettingsLabel.Size = UDim2.new(1, 0, 0, 16)
     SettingsLabel.Position = UDim2.new(0, 0, 0, 0)
     SettingsLabel.BackgroundTransparency = 1
-    SettingsLabel.Text = "SPRINKLER"  -- Changed from "INFINITE SPRINKLER"
+    SettingsLabel.Text = "SPRINKLER"
     SettingsLabel.TextColor3 = Color3.new(1, 1, 1)
     SettingsLabel.Font = Enum.Font.SourceSansBold
     SettingsLabel.TextSize = 12
 
-    -- Search Box for sprinklers
     local SprinklerSearchBox = Instance.new("TextBox", SettingsFrame)
     SprinklerSearchBox.Size = UDim2.new(1, -10, 0, 20)
     SprinklerSearchBox.Position = UDim2.new(0, 5, 0, 16)
@@ -685,7 +624,7 @@ local success, errorMsg = xpcall(function()
 
     -- Sprinkler List
     local SprinklerList = Instance.new("ScrollingFrame", SettingsFrame)
-    SprinklerList.Size = UDim2.new(1, 0, 0, 126)  -- Fixed height to prevent overlap
+    SprinklerList.Size = UDim2.new(1, 0, 0, 126)
     SprinklerList.Position = UDim2.new(0, 0, 0, 36)
     SprinklerList.BackgroundTransparency = 1
     SprinklerList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -693,8 +632,8 @@ local success, errorMsg = xpcall(function()
 
     -- Shovel Sprinkler Section
     local ShovelSprinklerFrame = Instance.new("Frame", SettingsFrame)
-    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 63)  -- Fixed height to prevent overlap
-    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 167)  -- Positioned below sprinkler list
+    ShovelSprinklerFrame.Size = UDim2.new(1, 0, 0, 63)
+    ShovelSprinklerFrame.Position = UDim2.new(0, 0, 0, 167)
     ShovelSprinklerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     ShovelSprinklerFrame.BackgroundTransparency = 0.5
     ShovelSprinklerFrame.BorderSizePixel = 0
@@ -707,13 +646,13 @@ local success, errorMsg = xpcall(function()
     ShovelSprinklerLabel.Size = UDim2.new(1, 0, 0.3, 0)
     ShovelSprinklerLabel.Position = UDim2.new(0, 0, 0, 0)
     ShovelSprinklerLabel.BackgroundTransparency = 1
-    ShovelSprinklerLabel.Text = "SHOVEL SPRINKLER"
+    ShovelSprinklerLabel.Text = "SHOVEL SPRINKLERS"
     ShovelSprinklerLabel.TextColor3 = Color3.new(1, 1, 1)
     ShovelSprinklerLabel.Font = Enum.Font.SourceSansBold
     ShovelSprinklerLabel.TextSize = 12
 
     local ShovelSprinklerToggle = Instance.new("TextButton", ShovelSprinklerFrame)
-    ShovelSprinklerToggle.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+    ShovelSprinklerToggle.Size = UDim2.new(0.3, -5, 0.4, -5)
     ShovelSprinklerToggle.Position = UDim2.new(0, 5, 0.3, 5)
     ShovelSprinklerToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
     ShovelSprinklerToggle.Text = "OFF"
@@ -722,7 +661,7 @@ local success, errorMsg = xpcall(function()
     ShovelSprinklerToggle.TextSize = 12
 
     local DelayLabel = Instance.new("TextLabel", ShovelSprinklerFrame)
-    DelayLabel.Size = UDim2.new(0.3, -5, 0.4, -5)  -- Smaller size
+    DelayLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
     DelayLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
     DelayLabel.BackgroundTransparency = 1
     DelayLabel.Text = "Delay/s:"
@@ -732,10 +671,10 @@ local success, errorMsg = xpcall(function()
     DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local DelayBox = Instance.new("TextBox", ShovelSprinklerFrame)
-    DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)  -- Smaller size
+    DelayBox.Size = UDim2.new(0.3, -10, 0.4, -5)
     DelayBox.Position = UDim2.new(0.7, 5, 0.3, 5)
     DelayBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    DelayBox.Text = "0"  -- Default delay
+    DelayBox.Text = "0"
     DelayBox.TextColor3 = Color3.new(1, 1, 1)
     DelayBox.Font = Enum.Font.SourceSansBold
     DelayBox.TextSize = 12
@@ -749,7 +688,6 @@ local success, errorMsg = xpcall(function()
     ToggleBtn.Image = "rbxassetid://131613009113138"
     ToggleBtn.ZIndex = 100
 
-    -- Add circular background
     local bg = Instance.new("Frame", ToggleBtn)
     bg.Name = "Background"
     bg.Size = UDim2.new(1, 0, 1, 0)
@@ -757,16 +695,13 @@ local success, errorMsg = xpcall(function()
     bg.BackgroundTransparency = 0.15
     bg.ZIndex = 99
 
-    -- Make background circular
     local corner = Instance.new("UICorner", bg)
     corner.CornerRadius = UDim.new(1, 0)
 
-    -- Add border to background
     local stroke = Instance.new("UIStroke", bg)
     stroke.Color = Color3.fromRGB(255, 50, 50)
     stroke.Thickness = 2
 
-    -- Add glow effect
     local glow = Instance.new("ImageLabel", ToggleBtn)
     glow.Name = "Glow"
     glow.Size = UDim2.new(1, 20, 1, 20)
@@ -779,11 +714,11 @@ local success, errorMsg = xpcall(function()
     glow.ZIndex = 98
     glow.Visible = false
 
-    -- Manual plant row creation
+    -- Plant Button Creation
     local function CreatePlantButton(plant, rarity, yPosition)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -10, 0, 18)  -- Fixed size
-        btn.Position = UDim2.new(0, 5, 0, yPosition) -- Manual positioning
+        btn.Size = UDim2.new(1, -10, 0, 18)
+        btn.Position = UDim2.new(0, 5, 0, yPosition)
         btn.BackgroundColor3 = RarityColors[rarity]
         btn.Text = plant
         btn.TextColor3 = Color3.new(1, 1, 1)
@@ -792,11 +727,9 @@ local success, errorMsg = xpcall(function()
         btn.TextXAlignment = Enum.TextXAlignment.Left
         btn.AutoButtonColor = false
         
-        -- Add padding to text
         local padding = Instance.new("UIPadding", btn)
         padding.PaddingLeft = UDim.new(0, 5)
         
-        -- Update button appearance based on selection
         if Whitelisted_Plants[plant] then
             btn.BackgroundTransparency = 0.3
         else
@@ -818,27 +751,24 @@ local success, errorMsg = xpcall(function()
         return btn
     end
 
-    -- Create sprinkler buttons with shortened display names
+    -- Sprinkler Button Creation
     local function CreateSprinklerButton(sprinkler, yPosition)
-        -- Shorten display name by removing " Sprinkler"
         local displayName = sprinkler:gsub(" Sprinkler", "")
         
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 18)
         btn.Position = UDim2.new(0, 5, 0, yPosition)
-        btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)  -- Grey color
-        btn.Text = displayName  -- Use shortened name
+        btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+        btn.Text = displayName
         btn.TextColor3 = Color3.new(1, 1, 1)
         btn.Font = Enum.Font.SourceSansBold
         btn.TextSize = 12
         btn.TextXAlignment = Enum.TextXAlignment.Left
         btn.AutoButtonColor = false
         
-        -- Add padding to text
         local padding = Instance.new("UIPadding", btn)
         padding.PaddingLeft = UDim.new(0, 5)
         
-        -- Update button appearance based on selection
         if Whitelisted_Sprinklers[sprinkler] then
             btn.BackgroundTransparency = 0.3
         else
@@ -846,11 +776,11 @@ local success, errorMsg = xpcall(function()
         end
         
         btn.MouseButton1Click:Connect(function()
-            Whitelisted_Sprinklers[sprinkler] = not Whitelisted_Sprinklers[sprinkler]  -- Use full name for functionality
+            Whitelisted_Sprinklers[sprinkler] = not Whitelisted_Sprinklers[sprinkler]
             
             if Whitelisted_Sprinklers[sprinkler] then
                 btn.BackgroundTransparency = 0.3
-                showNotification(displayName .. " selected for removal")  -- Use shortened name for notification
+                showNotification(displayName .. " selected for removal")
             else
                 btn.BackgroundTransparency = 0.7
                 showNotification(displayName .. " removed from removal list")
@@ -860,13 +790,12 @@ local success, errorMsg = xpcall(function()
         return btn
     end
 
-    -- Functions to manage plant display with manual positioning
+    -- Plant Display Functions
     local function ShowAllPlants()
         PlantsList:ClearAllChildren()
         local yPosition = 0
-        local rowHeight = 20  -- Height + padding
+        local rowHeight = 20
         
-        -- Use fixed rarity order instead of pairs
         for _, rarity in ipairs(RarityOrder) do
             local plants = PlantData[rarity]
             for _, plant in ipairs(plants) do
@@ -876,14 +805,13 @@ local success, errorMsg = xpcall(function()
             end
         end
         
-        -- Update canvas size
         PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     local function ShowPlantsByRarity(rarity)
         PlantsList:ClearAllChildren()
         local yPosition = 0
-        local rowHeight = 20  -- Height + padding
+        local rowHeight = 20
         
         local plants = PlantData[rarity] or {}
         for _, plant in ipairs(plants) do
@@ -892,14 +820,13 @@ local success, errorMsg = xpcall(function()
             yPosition = yPosition + rowHeight
         end
         
-        -- Update canvas size
         PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
     local function SearchPlants(searchTerm)
         PlantsList:ClearAllChildren()
         local yPosition = 0
-        local rowHeight = 20  -- Height + padding
+        local rowHeight = 20
         
         if searchTerm == "" then
             for _, btn in ipairs(RarityList:GetChildren()) do
@@ -923,7 +850,6 @@ local success, errorMsg = xpcall(function()
             end
         end
         
-        -- Update canvas size
         PlantsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
@@ -960,7 +886,7 @@ local success, errorMsg = xpcall(function()
         SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end)
 
-    -- Populate Rarity List in fixed order
+    -- Populate Rarity List
     for _, rarity in ipairs(RarityOrder) do
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -10, 0, 20)
@@ -972,7 +898,6 @@ local success, errorMsg = xpcall(function()
         btn.TextSize = 12
         btn.Parent = RarityList
         
-        -- Add padding to text
         local padding = Instance.new("UIPadding", btn)
         padding.PaddingLeft = UDim.new(0, 5)
     end
@@ -981,17 +906,13 @@ local success, errorMsg = xpcall(function()
     for _, btn in ipairs(RarityList:GetChildren()) do
         if btn:IsA("TextButton") then
             btn.MouseButton1Click:Connect(function()
-                -- Reset all buttons
                 for _, otherBtn in ipairs(RarityList:GetChildren()) do
                     if otherBtn:IsA("TextButton") then
                         otherBtn.BackgroundTransparency = 0.3
                     end
                 end
                 
-                -- Highlight selected button
                 btn.BackgroundTransparency = 0.1
-                
-                -- Show plants for this rarity
                 ShowPlantsByRarity(btn.Text)
             end)
         end
@@ -1061,15 +982,14 @@ local success, errorMsg = xpcall(function()
         end
     end)
 
-    -- Toggle UI Visibility with animation
-    local uiVisible = false  -- Start with UI hidden
+    -- Toggle UI Visibility
+    local uiVisible = false
     local firstTimeOpen = true
 
     ToggleBtn.MouseButton1Click:Connect(function()
         uiVisible = not uiVisible
         MainFrame.Visible = uiVisible
         
-        -- Glow animation
         glow.Visible = true
         local pulse = TweenService:Create(
             glow,
@@ -1078,7 +998,6 @@ local success, errorMsg = xpcall(function()
         )
         pulse:Play()
         
-        -- Rotation animation
         local rotationTween = TweenService:Create(
             ToggleBtn,
             TweenInfo.new(0.3, Enum.EasingStyle.Quint),
@@ -1086,20 +1005,16 @@ local success, errorMsg = xpcall(function()
         )
         rotationTween:Play()
         
-        -- Hide glow after animation
         task.delay(0.6, function()
             glow.Visible = false
         end)
         
-        -- Countdown on first open
         if uiVisible and firstTimeOpen then
             firstTimeOpen = false
             
-            -- Show initial notification
             local count = 10
             local notification, label = showCountdownNotification(count)
             
-            -- Start countdown
             task.spawn(function()
                 while count > 0 and uiVisible do
                     task.wait(1)
@@ -1111,10 +1026,8 @@ local success, errorMsg = xpcall(function()
                     end
                 end
                 
-                -- After countdown completes
                 task.wait(2)
                 
-                -- Fade out and destroy
                 local fadeOut = TweenService:Create(notification, TweenInfo.new(0.5), {BackgroundTransparency = 1})
                 local textFadeOut = TweenService:Create(label, TweenInfo.new(0.5), {TextTransparency = 1})
                 fadeOut:Play()
@@ -1127,13 +1040,12 @@ local success, errorMsg = xpcall(function()
     end)
 
     -- Initialize
-    ShowAllPlants()  -- Show all plants by default in fixed order
-    PopulateSprinklerList() -- Populate sprinkler list
+    ShowAllPlants()
+    PopulateSprinklerList()
     showNotification("Punk Team Infinite Script Loaded!")
 
 end, errorHandler)
 
--- Log if initialization failed
 if not success then
     warn("[PunkTeamInfinite CRITICAL ERROR] Script failed to initialize: " .. tostring(errorMsg))
 end
