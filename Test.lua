@@ -4,49 +4,67 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
 local backpack = localPlayer:WaitForChild("Backpack")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- Equip shovel
+-- Equip the shovel tool
 local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
 if shovelTool and shovelTool.Parent == backpack then
     shovelTool.Parent = character
 end
-
 local humanoid = character:FindFirstChildOfClass("Humanoid")
 if humanoid and shovelTool then
     humanoid:EquipTool(shovelTool)
-else
-    warn("Could not equip shovel tool")
-    return
 end
+
+local workspaceFarm = workspace:FindFirstChild("Farm")
+local farm = workspaceFarm and workspaceFarm:FindFirstChild("Farm")
+local importantFolder = farm and farm:FindFirstChild("Important")
+local plantsFolder = importantFolder and importantFolder:FindFirstChild("Plants_Physical")
 
 local Remove_Item = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
 
--- Recursive function to remove all fruit parts without distance limit and no delay
-local function removeFruitsRecursively(parent)
-    for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("BasePart") then
-            print("Removing fruit part:", child:GetFullName())
-            Remove_Item:FireServer(child)
-            -- No task.wait here for fastest removal
-        elseif child:IsA("Model") or child:IsA("Folder") then
-            removeFruitsRecursively(child)
-        else
-            print("Skipping non-part, non-model:", child:GetFullName(), child.ClassName)
+local plantsToRemove = {
+    ["Carrot"] = true,
+    ["Strawberry"] = true,
+}
+
+local function removeAllTargetPlants()
+    while true do
+        local targetPlants = {}
+
+        if plantsFolder then
+            for _, plant in ipairs(plantsFolder:GetChildren()) do
+                if plantsToRemove[plant.Name] then
+                    table.insert(targetPlants, plant)
+                end
+            end
         end
+
+        if #targetPlants == 0 then
+            print("No more target plants found. Stopping.")
+            break
+        end
+
+        -- Remove fruits of each target plant
+        for _, plant in ipairs(targetPlants) do
+            local fruitsFolder = plant:FindFirstChild("Fruits")
+            if fruitsFolder then
+                for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                    if fruit:IsA("Model") or fruit:IsA("BasePart") then
+                        print("Shoveling fruit:", fruit.Name, "from plant:", plant.Name)
+                        Remove_Item:FireServer(fruit)
+                    end
+                end
+            end
+        end
+
+        -- Remove the plants themselves
+        for _, plant in ipairs(targetPlants) do
+            print("Shoveling plant:", plant.Name)
+            Remove_Item:FireServer(plant)
+        end
+
+        task.wait() -- yield to avoid freezing
     end
 end
 
-local plantsFolder = workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
-local plantName = "Purple Dahlia"
-
-for _, plant in ipairs(plantsFolder:GetChildren()) do
-    if plant.Name == plantName then
-        local fruitsFolder = plant:FindFirstChild("Fruits")
-        if fruitsFolder then
-            removeFruitsRecursively(fruitsFolder)
-        else
-            warn("Fruits folder not found in plant '" .. plant.Name .. "'!")
-        end
-    end
-end
+removeAllTargetPlants()
