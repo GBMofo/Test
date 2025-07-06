@@ -70,6 +70,18 @@ local function hasFruitBelowThreshold(parent, threshold)
     return false
 end
 
+local function FireActivationEvents(plantCFrame)
+    local inputGateway = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
+
+    -- Fire false activation twice
+    inputGateway:FireServer(false, plantCFrame)
+    inputGateway:FireServer(false, plantCFrame)
+
+    -- Fire true activation twice
+    inputGateway:FireServer(true, plantCFrame)
+    inputGateway:FireServer(true, plantCFrame)
+end
+
 local function DestroyPlants()
     if not EquipAndActivateShovel() then
         warn("Failed to equip and activate shovel!")
@@ -112,18 +124,18 @@ local function DestroyPlants()
             if shouldDestroy then
                 print("Destroying plant:", plant.Name)
 
-                -- Teleport player near the plant (if possible)
                 if hrp and plant.PrimaryPart then
                     hrp.CFrame = plant.PrimaryPart.CFrame * CFrame.new(0, 0, 3)
                     task.wait(0.3)
                 end
 
-                -- Fire destruction and inventory removal events
                 DeleteObject:FireServer(plant)
                 RemoveItem:FireServer(plant.Name)
 
+                FireActivationEvents(plant.PrimaryPart.CFrame)
+
                 destroyedCount = destroyedCount + 1
-                task.wait(0.3) -- delay to avoid spamming server
+                task.wait(0.3)
             end
         else
             print("Plant not whitelisted:", plant.Name)
