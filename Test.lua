@@ -1,201 +1,135 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local DeleteObject = GameEvents:WaitForChild("DeleteObject")
 local RemoveItem = GameEvents:WaitForChild("Remove_Item")
+local ShovelPrompt = localPlayer.PlayerGui:WaitForChild("ShovelPrompt")
+local ConfirmFrame = ShovelPrompt:WaitForChild("ConfirmFrame")
 
 local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
 
-local DestructionThreshold = 100
-
-local Whitelisted_PlantsForDestruction = {
-    ["Tomato"] = true,
-    ["Strawberry"] = true,
-    ["Carrot"] = true,
-}
-
 local function EquipShovel()
     local character = localPlayer.Character
-    if not character then
-        warn("Character not found")
+    if not character then return false end
+    local tool = character:FindFirstChild("Shovel [Destroy Plants]") or localPlayer.Backpack:FindFirstChild("Shovel [Destroy Plants]")
+    if not tool then
+        warn("Shovel tool not found")
         return false
     end
-
-    local tool = character:FindFirstChild("Shovel [Destroy Plants]")
-    if not tool then
-        local backpack = localPlayer:WaitForChild("Backpack")
-        tool = backpack:FindFirstChild("Shovel [Destroy Plants]")
-        if tool then
-            tool.Parent = character
-            print("Moved shovel to character")
-        else
-            warn("Shovel tool not found in backpack")
-            return false
-        end
-    end
-
+    tool.Parent = character
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid and tool:IsA("Tool") then
+    if humanoid then
         humanoid:EquipTool(tool)
         task.wait(0.1)
         tool:Activate()
-        print("Shovel equipped and activated")
         return true
-    else
-        warn("Humanoid or tool invalid")
-        return false
-    end
-end
-
-local function hasFruitBelowThreshold(parent, threshold)
-    for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("BasePart") then
-            local fruitModel = child.Parent
-            if fruitModel and fruitModel:IsA("Model") then
-                local weightValue = fruitModel:FindFirstChild("Weight")
-                if weightValue and weightValue:IsA("NumberValue") and weightValue.Value < threshold then
-                    return true
-                end
-            end
-        elseif child:IsA("Model") or child:IsA("Folder") then
-            if hasFruitBelowThreshold(child, threshold) then
-                return true
-            end
-        end
     end
     return false
 end
 
 local function GetTargetPart(model)
-    if model.PrimaryPart then
-        return model.PrimaryPart
-    end
-
-    local commonNames = {"Main", "Base", "Hitbox", "Root"}
-    for _, name in ipairs(commonNames) do
-        local part = model:FindFirstChild(name)
-        if part and part:IsA("BasePart") then
-            return part
-        end
-    end
-
+    if model.PrimaryPart then return model.PrimaryPart end
     for _, child in ipairs(model:GetChildren()) do
-        if child:IsA("BasePart") then
-            return child
-        end
+        if child:IsA("BasePart") then return child end
     end
-
     return nil
 end
 
-local function ClickPart(partCFrame)
-    local player = Players.LocalPlayer
-    local inputGateway1 = player:WaitForChild("PlayerScripts"):WaitForChild("InputGateway"):WaitForChild("Activation")
-    local inputGateway2 = player.Character and player.Character:FindFirstChild("InputGateway") and player.Character.InputGateway:FindFirstChild("Activation")
+local function SimulateShovelTargeting(plantPart)
+    local screenPos, onScreen = camera:WorldToViewportPoint(plantPart.Position)
+    if not onScreen then
+        warn("Plant not on screen")
+        return false
+    end
 
-    print("Clicking part at CFrame:", partCFrame)
+    -- Simulate the shovel's input handler by firing the mouse click at the screen position
+    -- The shovel listens to mouse clicks and calls handleShovelInput_upvr with mouse location
+    -- We simulate this by invoking the mouse click event manually
 
-    inputGateway1:FireServer(true, partCFrame)
-    if inputGateway2 then inputGateway2:FireServer(true, partCFrame) end
-    task.wait(0.1)
+    -- Move mouse cursor (if possible)
+    UserInputService:SetMouseLocation(screenPos.X, screenPos.Y)
+    -- Fire mouse button down event
+    local mouse = localPlayer:GetMouse()
+    mouse.Button1Down:Wait() -- wait for actual click or simulate if possible
 
-    inputGateway1:FireServer(false, partCFrame)
-    if inputGateway2 then inputGateway2:FireServer(false, partCFrame) end
-    task.wait(0.2)
+    -- Alternatively, if you can access the shovel's input function, call it directly with screenPos
+
+    -- Wait for the prompt to appear
+    local timeout = 5
+    while not ShovelPrompt.Enabled and timeout > 0 do
+        task.wait(0.1)
+        timeout -= 0.1
+    end
+
+    return ShovelPrompt.Enabled
 end
 
-local function DestroyPlants()
-    if not EquipShovel() then
-        warn("Failed to equip shovel")
+local function ConfirmDestruction()
+    if not ShovelPrompt.Enabled then
+        warn("Shovel prompt not enabled")
         return false
     end
 
-    local farm = GetFarm(localPlayer)
-    if not farm then
-        warn("Farm not found")
+    -- Fire the confirm button click event programmatically
+    ConfirmFrame.Confirm:CaptureFocus()
+    ConfirmFrame.Confirm.MouseButton1Click:Fire()
+
+    -- Wait for prompt to close
+    local timeout = 5
+    while ShovelPrompt.Enabled and timeout > 0 do
+        task.wait(0.1)
+        timeout -= 0.1
+    end
+
+    return not ShovelPrompt.Enabled
+end
+
+local function DestroyPlant(plant)
+    local plantPart = GetTargetPart(plant)
+    if not plantPart then
+        warn("No valid part found for plant:", plant.Name)
         return false
     end
 
-    local important = farm:FindFirstChild("Important")
-    if not important then
-        warn("Important folder not found")
-        return false
-    end
-
-    local plantsPhysical = important:FindFirstChild("Plants_Physical")
-    if not plantsPhysical then
-        warn("Plants_Physical not found")
-        return false
-    end
-
+    -- Teleport near plant
     local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local destroyedCount = 0
-
-    for _, plant in ipairs(plantsPhysical:GetChildren()) do
-        print("Checking plant:", plant.Name)
-        if Whitelisted_PlantsForDestruction[plant.Name] then
-            local fruitsFolder = plant:FindFirstChild("Fruits")
-            local shouldDestroy = fruitsFolder and hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
-            print("Has fruit below threshold:", shouldDestroy)
-
-            if shouldDestroy then
-                local targetPart = GetTargetPart(plant)
-                if not targetPart then
-                    warn("No valid target part found for plant: " .. plant.Name)
-                    continue
-                end
-
-                print("Destroying plant:", plant.Name)
-
-                if hrp then
-                    hrp.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.5)
-                    task.wait(0.3)
-                    print("Teleported near plant:", plant.Name)
-                end
-
-                ClickPart(targetPart.CFrame)
-
-                if fruitsFolder then
-                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        local fruitPart = GetTargetPart(fruit) or (fruit:IsA("BasePart") and fruit or nil)
-                        if fruitPart then
-                            print("Clicking fruit:", fruit.Name)
-                            ClickPart(fruitPart.CFrame)
-                            task.wait(0.2)
-                        end
-                    end
-                end
-
-                DeleteObject:FireServer(plant)
-                RemoveItem:FireServer(plant.Name)
-                print("Fired DeleteObject and RemoveItem for plant:", plant.Name)
-
-                if fruitsFolder then
-                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        DeleteObject:FireServer(fruit)
-                        RemoveItem:FireServer(fruit.Name)
-                        print("Fired DeleteObject and RemoveItem for fruit:", fruit.Name)
-                        task.wait(0.1)
-                    end
-                end
-
-                destroyedCount = destroyedCount + 1
-                task.wait(0.5)
-            end
-        else
-            print("Plant not whitelisted:", plant.Name)
-        end
+    if hrp then
+        hrp.CFrame = plantPart.CFrame * CFrame.new(0, 0, 2)
+        task.wait(0.3)
     end
 
-    if destroyedCount > 0 then
-        warn("Destroyed " .. destroyedCount .. " plants")
-        return true
-    else
-        print("No plants met destruction criteria.")
+    if not SimulateShovelTargeting(plantPart) then
+        warn("Failed to target plant:", plant.Name)
         return false
     end
+
+    if not ConfirmDestruction() then
+        warn("Failed to confirm destruction for plant:", plant.Name)
+        return false
+    end
+
+    print("Destroyed plant:", plant.Name)
+    return true
 end
 
-DestroyPlants()
+if EquipShovel() then
+    local farm = GetFarm(localPlayer)
+    local important = farm and farm:FindFirstChild("Important")
+    local plantsPhysical = important and important:FindFirstChild("Plants_Physical")
+    if plantsPhysical then
+        for _, plant in ipairs(plantsPhysical:GetChildren()) do
+            -- Add your plant filtering logic here if needed
+            DestroyPlant(plant)
+            task.wait(0.5)
+        end
+    else
+        warn("Plants_Physical folder not found")
+    end
+else
+    warn("Failed to equip shovel")
+end
