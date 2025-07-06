@@ -9,12 +9,10 @@ local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
 
 local DestructionThreshold = 100 -- Weight threshold for destruction
 
--- Whitelist plants you want to target
 local Whitelisted_PlantsForDestruction = {
     ["Tomato"] = true,
     ["Strawberry"] = true,
     ["Carrot"] = true,
-    -- Add more plant names as needed
 }
 
 -- Equip shovel tool function
@@ -39,22 +37,22 @@ end
 -- Recursive function to check if any fruit part/model under 'parent' has weight below threshold
 local function hasFruitBelowThreshold(parent, threshold)
     for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("Model") or child:IsA("Folder") then
+        if child:IsA("BasePart") then
+            local fruitModel = child.Parent
+            if fruitModel and fruitModel:IsA("Model") then
+                local weightValue = fruitModel:FindFirstChild("Weight")
+                if weightValue and weightValue:IsA("NumberValue") then
+                    print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
+                    if weightValue.Value < threshold then
+                        return true
+                    end
+                else
+                    print("Weight value missing or invalid for fruit:", fruitModel.Name)
+                end
+            end
+        elseif child:IsA("Model") or child:IsA("Folder") then
             if hasFruitBelowThreshold(child, threshold) then
                 return true
-            end
-        else
-            if child:IsA("BasePart") then
-                local fruitModel = child.Parent
-                if fruitModel then
-                    local weightValue = fruitModel:FindFirstChild("Weight")
-                    if weightValue and weightValue:IsA("NumberValue") then
-                        print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
-                        if weightValue.Value < threshold then
-                            return true
-                        end
-                    end
-                end
             end
         end
     end
@@ -89,14 +87,12 @@ local function DestroyPlants()
 
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
         if Whitelisted_PlantsForDestruction[plant.Name] then
-            local shouldDestroy = false
-
             local fruitsFolder = plant:FindFirstChild("Fruits")
+            local shouldDestroy = false
             if fruitsFolder then
                 shouldDestroy = hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
             else
                 print("No fruits folder found in plant:", plant.Name)
-                shouldDestroy = false
             end
 
             if shouldDestroy then
