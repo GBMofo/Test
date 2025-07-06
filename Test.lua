@@ -7,29 +7,32 @@ local DeleteObject = GameEvents:WaitForChild("DeleteObject")
 
 local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
 
-local DestructionThreshold = 100 -- Set weight threshold to 100
+local DestructionThreshold = 100 -- Weight threshold for destruction
 
+-- Whitelist plants you want to target
 local Whitelisted_PlantsForDestruction = {
-    ["Strawberry"] = true,
     ["Tomato"] = true,
-    -- Add other plant names as needed
+    ["Strawberry"] = true,
+    ["Carrot"] = true,
+    -- Add more plant names as needed
 }
 
+-- Equip shovel tool function
 local function EquipShovel()
     local character = localPlayer.Character
     if not character then return false end
-    
+
     if character:FindFirstChild("Shovel [Destroy Plants]") then
         return true
     end
-    
+
     local backpack = localPlayer:WaitForChild("Backpack")
     local shovelTool = backpack:FindFirstChild("Shovel [Destroy Plants]")
-    
     if shovelTool then
         shovelTool.Parent = character
         return true
     end
+
     return false
 end
 
@@ -44,55 +47,60 @@ local function DestroyPlants()
         warn("Farm not found!")
         return false
     end
-    
+
     local important = farm:FindFirstChild("Important")
     if not important then
         warn("Important folder not found!")
         return false
     end
-    
+
     local plantsPhysical = important:FindFirstChild("Plants_Physical")
     if not plantsPhysical then
         warn("Plants_Physical not found!")
         return false
     end
-    
+
     local destroyedCount = 0
-    
+
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
         if Whitelisted_PlantsForDestruction[plant.Name] then
-            local shouldDestroy = true
-            
-            if DestructionThreshold > 0 then
-                shouldDestroy = false
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                if fruitsFolder then
-                    for _, fruitPart in ipairs(fruitsFolder:GetChildren()) do
-                        local fruitModel = fruitPart.Parent
-                        local weightValue = fruitModel and fruitModel:FindFirstChild("Weight")
-                        if weightValue and weightValue.Value < DestructionThreshold then
+            local shouldDestroy = false
+
+            local fruitsFolder = plant:FindFirstChild("Fruits")
+            if fruitsFolder then
+                for _, fruitPart in ipairs(fruitsFolder:GetChildren()) do
+                    local fruitModel = fruitPart.Parent
+                    local weightValue = fruitModel and fruitModel:FindFirstChild("Weight")
+                    if weightValue and weightValue:IsA("NumberValue") then
+                        print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
+                        if weightValue.Value < DestructionThreshold then
                             shouldDestroy = true
                             break
                         end
+                    else
+                        print("Weight value missing or invalid for fruit:", fruitModel and fruitModel.Name)
                     end
                 end
+            else
+                print("No fruits folder found in plant:", plant.Name)
             end
-            
+
             if shouldDestroy then
                 print("Destroying plant:", plant.Name)
                 DeleteObject:FireServer(plant)
                 destroyedCount = destroyedCount + 1
-                task.wait(0.1)
+                task.wait(0.1) -- small delay to avoid spamming
             end
         end
     end
-    
+
     if destroyedCount > 0 then
         warn("Destroyed " .. destroyedCount .. " plants")
         return true
+    else
+        print("No plants met destruction criteria.")
+        return false
     end
-    
-    return false
 end
 
 DestroyPlants()
