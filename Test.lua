@@ -36,6 +36,31 @@ local function EquipShovel()
     return false
 end
 
+-- Recursive function to check if any fruit part/model under 'parent' has weight below threshold
+local function hasFruitBelowThreshold(parent, threshold)
+    for _, child in ipairs(parent:GetChildren()) do
+        if child:IsA("Model") or child:IsA("Folder") then
+            if hasFruitBelowThreshold(child, threshold) then
+                return true
+            end
+        else
+            if child:IsA("BasePart") then
+                local fruitModel = child.Parent
+                if fruitModel then
+                    local weightValue = fruitModel:FindFirstChild("Weight")
+                    if weightValue and weightValue:IsA("NumberValue") then
+                        print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
+                        if weightValue.Value < threshold then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 local function DestroyPlants()
     if not EquipShovel() then
         warn("Failed to equip shovel!")
@@ -68,21 +93,10 @@ local function DestroyPlants()
 
             local fruitsFolder = plant:FindFirstChild("Fruits")
             if fruitsFolder then
-                for _, fruitPart in ipairs(fruitsFolder:GetChildren()) do
-                    local fruitModel = fruitPart.Parent
-                    local weightValue = fruitModel and fruitModel:FindFirstChild("Weight")
-                    if weightValue and weightValue:IsA("NumberValue") then
-                        print(string.format("Checking fruit '%s' weight: %d", fruitModel.Name, weightValue.Value))
-                        if weightValue.Value < DestructionThreshold then
-                            shouldDestroy = true
-                            break
-                        end
-                    else
-                        print("Weight value missing or invalid for fruit:", fruitModel and fruitModel.Name)
-                    end
-                end
+                shouldDestroy = hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
             else
                 print("No fruits folder found in plant:", plant.Name)
+                shouldDestroy = false
             end
 
             if shouldDestroy then
