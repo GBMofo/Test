@@ -4,22 +4,36 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
 local backpack = localPlayer:WaitForChild("Backpack")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- Wait for shovel client to be ready (as per your rspy snippet)
-local ShovelClient = localPlayer:WaitForChild("Shovel_Client")
+-- Equip shovel using your existing EquipShovel function with pcall retry logic
+local function EquipShovel()
+    -- Your shovel equip logic here
+    -- For example, equipping the shovel tool from backpack or character
+    local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
+    if shovelTool and shovelTool.Parent == backpack then
+        shovelTool.Parent = character
+    end
 
--- Equip shovel tool
-local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
-if shovelTool and shovelTool.Parent == backpack then
-    shovelTool.Parent = character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and shovelTool then
+        humanoid:EquipTool(shovelTool)
+        return true
+    end
+    return false
 end
 
-local humanoid = character:FindFirstChildOfClass("Humanoid")
-if humanoid and shovelTool then
-    humanoid:EquipTool(shovelTool)
-else
-    warn("Could not equip shovel tool")
+-- Equip shovel with retry logic
+local equipped = false
+for i = 1, 3 do
+    if pcall(EquipShovel) then
+        equipped = true
+        break
+    end
+    task.wait(0.5)
+end
+
+if not equipped then
+    warn("Failed to equip shovel!")
     return
 end
 
@@ -30,22 +44,17 @@ local Remove_Item = GameEvents:WaitForChild("Remove_Item")
 local function removeFruitsRecursively(parent)
     for _, child in ipairs(parent:GetChildren()) do
         if child:IsA("BasePart") then
-            print("Removing fruit part:", child:GetFullName())
-            -- Fire Remove_Item event with the fruit part as argument, matching rspy usage
             Remove_Item:FireServer(child)
-            -- No delay for fastest removal
         elseif child:IsA("Model") or child:IsA("Folder") then
             removeFruitsRecursively(child)
-        else
-            print("Skipping non-part, non-model:", child:GetFullName(), child.ClassName)
         end
     end
 end
 
--- Farm path from your previous codes
+-- Farm path from your previous code
 local plantsFolder = workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
 
-local plantName = "Strawberry"  -- Change this to target other plants like "Tomato"
+local plantName = "Strawberry" -- Change to your target plant
 
 for _, plant in ipairs(plantsFolder:GetChildren()) do
     if plant.Name == plantName then
