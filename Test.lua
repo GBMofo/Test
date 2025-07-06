@@ -25,6 +25,7 @@ local success, errorMsg = xpcall(function()
     local AutoShovelSprinklers = false
     local AutoDestroyPlants = false
     local ShovelWeightThreshold = 200
+    local DestructionThreshold = 0
     local ShovelDelay = 0
     local LastNotificationTime = 0
 
@@ -399,7 +400,7 @@ local success, errorMsg = xpcall(function()
         end
     end
 
-    -- DESTROY PLANTS FUNCTIONALITY
+    -- FIXED DESTROY PLANTS FUNCTIONALITY
     local function DestroyPlants()
         local farm = GetFarm(LocalPlayer.Name)
         if not farm then
@@ -438,13 +439,32 @@ local success, errorMsg = xpcall(function()
         
         for _, plant in ipairs(plantsPhysical:GetChildren()) do
             if Whitelisted_PlantsForDestruction[plant.Name] then
-                pcall(function()
-                    if GameEvents:FindFirstChild("DeleteObject") then
-                        GameEvents.DeleteObject:FireServer(plant)
-                        destroyedCount = destroyedCount + 1
+                local shouldDestroy = true
+                
+                -- Only check fruits if we have a destruction threshold
+                if DestructionThreshold > 0 then
+                    shouldDestroy = false
+                    local fruitsFolder = plant:FindFirstChild("Fruits")
+                    if fruitsFolder then
+                        for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                            local weightValue = fruit:FindFirstChild("Weight")
+                            if weightValue and weightValue.Value < DestructionThreshold then
+                                shouldDestroy = true
+                                break
+                            end
+                        end
                     end
-                end)
-                task.wait(0.1)
+                end
+                
+                if shouldDestroy then
+                    pcall(function()
+                        if GameEvents:FindFirstChild("DeleteObject") then
+                            GameEvents.DeleteObject:FireServer(plant)
+                            destroyedCount = destroyedCount + 1
+                        end
+                    end)
+                    task.wait(0.1)
+                end
             end
         end
         
@@ -484,7 +504,7 @@ local success, errorMsg = xpcall(function()
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 390, 0, 280)  -- Increased width for new column
+    MainFrame.Size = UDim2.new(0, 390, 0, 280)
     MainFrame.Position = UDim2.new(0.5, -195, 0.5, -140)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BackgroundTransparency = 0.2
@@ -762,10 +782,10 @@ local success, errorMsg = xpcall(function()
     DelayBox.Font = Enum.Font.SourceSansBold
     DelayBox.TextSize = 12
 
-    -- NEW PLANTS Column (for destroying entire plants)
+    -- PLANTS Column (for destroying entire plants)
     local PlantsFrame = Instance.new("Frame", MainFrame)
     PlantsFrame.Size = UDim2.new(0, 110, 0, 230)
-    PlantsFrame.Position = UDim2.new(0, 280, 0, 22)  -- Positioned to the right of sprinkler column
+    PlantsFrame.Position = UDim2.new(0, 280, 0, 22)
     PlantsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     PlantsFrame.BackgroundTransparency = 0.3
     PlantsFrame.BorderSizePixel = 0
@@ -806,7 +826,7 @@ local success, errorMsg = xpcall(function()
     PlantsList.ScrollBarThickness = 4
     PlantsList.Parent = PlantsListContainer
 
-    -- Destroy Plants Section
+    -- Destroy Plants Section (FIXED)
     local DestroyPlantsFrame = Instance.new("Frame", PlantsFrame)
     DestroyPlantsFrame.Size = UDim2.new(1, 0, 0, 64)
     DestroyPlantsFrame.Position = UDim2.new(0, 0, 0, 166)
@@ -835,6 +855,26 @@ local success, errorMsg = xpcall(function()
     DestroyPlantsToggle.TextColor3 = Color3.new(1, 1, 1)
     DestroyPlantsToggle.Font = Enum.Font.SourceSansBold
     DestroyPlantsToggle.TextSize = 12
+
+    -- Min/kg input for destruction threshold
+    local DestroyThresholdLabel = Instance.new("TextLabel", DestroyPlantsFrame)
+    DestroyThresholdLabel.Size = UDim2.new(0.3, -5, 0.4, -5)
+    DestroyThresholdLabel.Position = UDim2.new(0.35, 5, 0.3, 5)
+    DestroyThresholdLabel.BackgroundTransparency = 1
+    DestroyThresholdLabel.Text = "Min/kg:"
+    DestroyThresholdLabel.TextColor3 = Color3.new(1, 1, 1)
+    DestroyThresholdLabel.Font = Enum.Font.SourceSans
+    DestroyThresholdLabel.TextSize = 12
+    DestroyThresholdLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local DestroyThresholdBox = Instance.new("TextBox", DestroyPlantsFrame)
+    DestroyThresholdBox.Size = UDim2.new(0.3, -10, 0.4, -5)
+    DestroyThresholdBox.Position = UDim2.new(0.7, 5, 0.3, 5)
+    DestroyThresholdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DestroyThresholdBox.Text = "0"
+    DestroyThresholdBox.TextColor3 = Color3.new(1, 1, 1)
+    DestroyThresholdBox.Font = Enum.Font.SourceSansBold
+    DestroyThresholdBox.TextSize = 12
 
     -- Toggle UI Button
     local ToggleBtn = Instance.new("ImageButton", ScreenGui)
@@ -1002,6 +1042,53 @@ local success, errorMsg = xpcall(function()
         FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
+    -- FIXED: Added rarity filtering for FRUITS column
+    local function ShowFruitsByRarity(rarity)
+        FruitsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        local plants = PlantData[rarity] or {}
+        for _, plant in ipairs(plants) do
+            local btn = CreatePlantButton(plant, rarity, yPosition)
+            btn.Parent = FruitsList
+            yPosition = yPosition + rowHeight
+        end
+        
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
+    -- FIXED: Added search for FRUITS column
+    local function SearchFruits(searchTerm)
+        FruitsList:ClearAllChildren()
+        local yPosition = 0
+        local rowHeight = 20
+        
+        if searchTerm == "" then
+            for _, btn in ipairs(RarityList:GetChildren()) do
+                if btn:IsA("TextButton") and btn.BackgroundTransparency == 0.1 then
+                    ShowFruitsByRarity(btn.Text)
+                    return
+                end
+            end
+            ShowAllFruits()
+            return
+        end
+        
+        for _, rarity in ipairs(RarityOrder) do
+            local plants = PlantData[rarity]
+            for _, plant in ipairs(plants) do
+                if string.find(string.lower(plant), string.lower(searchTerm)) then
+                    local btn = CreatePlantButton(plant, rarity, yPosition)
+                    btn.Parent = FruitsList
+                    yPosition = yPosition + rowHeight
+                end
+            end
+        end
+        
+        FruitsList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    end
+
     -- Plant Display Functions for plant destruction
     local function ShowAllPlantsForDestruction()
         PlantsList:ClearAllChildren()
@@ -1098,6 +1185,11 @@ local success, errorMsg = xpcall(function()
         SprinklerList.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end)
 
+    -- FIXED: Added search handler for fruits
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        SearchFruits(SearchBox.Text)
+    end)
+
     -- Search handler for plant destruction
     PlantsSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
         SearchPlantsForDestruction(PlantsSearchBox.Text)
@@ -1119,7 +1211,7 @@ local success, errorMsg = xpcall(function()
         padding.PaddingLeft = UDim.new(0, 5)
     end
 
-    -- Rarity selection handler
+    -- Rarity selection handler (UPDATED to handle both columns)
     for _, btn in ipairs(RarityList:GetChildren()) do
         if btn:IsA("TextButton") then
             btn.MouseButton1Click:Connect(function()
@@ -1130,7 +1222,9 @@ local success, errorMsg = xpcall(function()
                 end
                 
                 btn.BackgroundTransparency = 0.1
+                -- Update both columns
                 ShowPlantsByRarityForDestruction(btn.Text)
+                ShowFruitsByRarity(btn.Text)
             end)
         end
     end
@@ -1187,7 +1281,7 @@ local success, errorMsg = xpcall(function()
             showNotification("Auto Destroy Plants: ON")
             StartAutoDestroyPlants()
         else
-            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+            DestroyPlantsToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 80)
             DestroyPlantsToggle.Text = "OFF"
             showNotification("Auto Destroy Plants: OFF")
             -- Immediately stop destroy plants thread
@@ -1207,6 +1301,18 @@ local success, errorMsg = xpcall(function()
             showNotification("Min weight set to: " .. threshold)
         else
             ThresholdBox.Text = tostring(ShovelWeightThreshold)
+        end
+    end)
+
+    -- FIXED: Added threshold handler for destruction
+    DestroyThresholdBox.FocusLost:Connect(function()
+        local threshold = tonumber(DestroyThresholdBox.Text)
+        if threshold and threshold >= 0 then
+            DestructionThreshold = threshold
+            DestroyThresholdBox.Text = tostring(threshold)
+            showNotification("Destruction threshold set to: " .. threshold)
+        else
+            DestroyThresholdBox.Text = tostring(DestructionThreshold)
         end
     end)
 
