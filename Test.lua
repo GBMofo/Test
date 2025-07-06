@@ -1,80 +1,42 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
-local Farms = workspace:WaitForChild("Farm")
 
--- Automatically equip the shovel tool
-local function EquipShovel()
-    local character = LocalPlayer.Character
-    if not character then return false end
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if not backpack then return false end
-    local shovel = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
-    if not shovel then
-        warn("Shovel [Destroy Plants] not found!")
-        return false
-    end
-    if shovel.Parent == backpack then
-        shovel.Parent = character
-    end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid:EquipTool(shovel)
-        return true
-    end
-    return false
+local localPlayer = Players.LocalPlayer
+local backpack = localPlayer:WaitForChild("Backpack")
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+
+-- Equip and activate the shovel
+local shovelTool = character:FindFirstChild("Shovel [Destroy Plants]") or backpack:FindFirstChild("Shovel [Destroy Plants]")
+if shovelTool and shovelTool.Parent == backpack then
+    shovelTool.Parent = character
+end
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+if humanoid and shovelTool then
+    humanoid:EquipTool(shovelTool)
 end
 
-local function GetFarmOwner(farm)
-    return farm:FindFirstChild("Important") 
-       and farm.Important:FindFirstChild("Data") 
-       and farm.Important.Data:FindFirstChild("Owner") 
-       and farm.Important.Data.Owner.Value
-end
+local workspaceFarm = workspace:FindFirstChild("Farm")
+local farm = workspaceFarm and workspaceFarm:FindFirstChild("Farm")
+local importantFolder = farm and farm:FindFirstChild("Important")
+local plantsFolder = importantFolder and importantFolder:FindFirstChild("Plants_Physical")
 
-local function GetFarm(playerName)
-    for _, farm in pairs(Farms:GetChildren()) do
-        if GetFarmOwner(farm) == playerName then
-            return farm
-        end
-    end
-    return nil
-end
+-- Target plants updated to Tomato and Corn
+local plantsToTarget = { "Tomato", "Corn" }
 
-local function DestroyTomatoPlants()
-    if not EquipShovel() then
-        warn("Could not equip shovel!")
-        return
-    end
+local Remove_Item = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
 
-    local farm = GetFarm(LocalPlayer.Name)
-    if not farm then
-        warn("Farm not found!")
-        return
-    end
-    local important = farm:FindFirstChild("Important")
-    if not important then
-        warn("Important folder not found!")
-        return
-    end
-    local plantsPhysical = important:FindFirstChild("Plants_Physical")
-    if not plantsPhysical then
-        warn("Plants_Physical folder not found!")
-        return
-    end
-
-    local destroyed = 0
-    for _, plant in ipairs(plantsPhysical:GetChildren()) do
-        if plant.Name == "Tomato" and plant:IsA("Model") then
-            if GameEvents:FindFirstChild("Delete_Object") then
-                GameEvents.Delete_Object:FireServer(plant)
-                destroyed = destroyed + 1
-                task.wait(0.1) -- slight delay to avoid flooding
+for _, plantName in ipairs(plantsToTarget) do
+    local plant = plantsFolder and plantsFolder:FindFirstChild(plantName)
+    if plant then
+        local fruitsFolder = plant:FindFirstChild("Fruits")
+        if fruitsFolder then
+            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                if fruit:IsA("Model") or fruit:IsA("BasePart") then
+                    print("Shoveling fruit:", fruit.Name, "from plant:", plant.Name)
+                    Remove_Item:FireServer(fruit)
+                    task.wait(0.5)
+                end
             end
         end
     end
-    print("Destroyed "..destroyed.." Tomato plants.")
 end
-
-DestroyTomatoPlants()
