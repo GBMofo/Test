@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer = Players.LocalPlayer
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local DeleteObject = GameEvents:WaitForChild("DeleteObject")
+local RemoveItem = GameEvents:WaitForChild("Remove_Item")
 
 local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
 
@@ -17,20 +18,33 @@ local Whitelisted_PlantsForDestruction = {
 
 local function EquipShovel()
     local character = localPlayer.Character
-    if not character then return false end
-
-    if character:FindFirstChild("Shovel [Destroy Plants]") then
-        return true
+    if not character then 
+        warn("Character not found")
+        return false 
     end
 
-    local backpack = localPlayer:WaitForChild("Backpack")
-    local shovelTool = backpack:FindFirstChild("Shovel [Destroy Plants]")
-    if shovelTool then
-        shovelTool.Parent = character
-        return true
+    local tool = character:FindFirstChild("Shovel [Destroy Plants]")
+    if not tool then
+        local backpack = localPlayer:WaitForChild("Backpack")
+        tool = backpack:FindFirstChild("Shovel [Destroy Plants]")
+        if tool then
+            tool.Parent = character
+            print("Moved shovel to character")
+        else
+            warn("Shovel tool not found in backpack")
+            return false
+        end
     end
 
-    return false
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and tool:IsA("Tool") then
+        humanoid:EquipTool(tool)
+        print("Equipped shovel tool")
+        return true
+    else
+        warn("Humanoid or tool invalid")
+        return false
+    end
 end
 
 local function hasFruitBelowThreshold(parent, threshold)
@@ -80,20 +94,29 @@ local function DestroyPlants()
 
     local destroyedCount = 0
 
+    print("Checking plants for destruction... Total plants:", #plantsPhysical:GetChildren())
+
     for _, plant in ipairs(plantsPhysical:GetChildren()) do
+        print("Checking plant:", plant.Name)
         if Whitelisted_PlantsForDestruction[plant.Name] then
             local fruitsFolder = plant:FindFirstChild("Fruits")
             local shouldDestroy = false
             if fruitsFolder then
                 shouldDestroy = hasFruitBelowThreshold(fruitsFolder, DestructionThreshold)
+                print("Has fruit below threshold:", shouldDestroy)
             end
 
             if shouldDestroy then
                 print("Destroying plant:", plant.Name)
-                DeleteObject:FireServer(plant)
+                -- Fire DeleteObject with plant instance wrapped in a table
+                DeleteObject:FireServer({plant})
+                -- Fire Remove_Item with plant name string
+                RemoveItem:FireServer(plant.Name)
                 destroyedCount = destroyedCount + 1
                 task.wait(0.1)
             end
+        else
+            print("Plant not whitelisted:", plant.Name)
         end
     end
 
